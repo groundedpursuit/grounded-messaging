@@ -1,4 +1,4 @@
-const CACHE_NAME = 'grounded-messaging-v1';
+const CACHE_NAME = 'grounded-messaging-v2';
 const ASSETS = [
   './',
   './index.html',
