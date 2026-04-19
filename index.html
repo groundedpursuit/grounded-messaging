@@ -1,11 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
-  />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
   <title>Grounded Messaging</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a1a2e" />
@@ -14,18 +11,24 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Grounded" />
 
-  <!-- UI (kept) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
     :root { --app-height: 100vh; }
 
-    html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+      overscroll-behavior: none;
+    }
     body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f2f2f7;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background-color: #e9e9ee;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
@@ -54,7 +57,7 @@
         width: min(400px, calc(100vw - 32px));
         height: min(850px, calc(var(--app-height) - 32px));
         border-radius: 40px;
-        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+        box-shadow: 0 30px 65px -16px rgba(12, 15, 24, 0.28);
         border: 4px solid rgb(31 41 55);
       }
     }
@@ -64,31 +67,70 @@
       .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
     }
 
+    button[aria-label] {
+      min-width: 44px;
+      min-height: 44px;
+    }
+
+    .ios-toolbar,
+    .ios-chat-header {
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 0.5px solid #d6d6dc;
+    }
+
+    .ios-toolbar-title {
+      font-size: 33px;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      font-weight: 700;
+      color: #000;
+    }
+
+    .ios-search {
+      border-radius: 10px;
+      background: #f2f2f7;
+      color: #8e8e93;
+      font-size: 16px;
+      min-height: 36px;
+    }
+
     .bubble-received {
       background-color: #e9e9eb; color: #000;
-      border-radius: 18px; padding: 10px 16px;
-      max-width: 85%; font-size: 16px; line-height: 1.4;
+      border-radius: 20px; padding: 9px 14px;
+      max-width: 82%; font-size: 17px; line-height: 1.32;
       position: relative; margin-bottom: 6px;
       align-self: flex-start; transform-origin: left bottom;
       -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
     }
     .bubble-received::before {
-      content: ""; position: absolute; bottom: 0; left: -6px;
-      height: 20px; width: 20px; background-color: #e9e9eb;
-      border-bottom-right-radius: 16px; z-index: -1;
+      content: "";
+      position: absolute;
+      left: -4px;
+      bottom: 2px;
+      width: 11px;
+      height: 12px;
+      background: #e9e9eb;
+      border-bottom-right-radius: 10px;
     }
     .bubble-sent {
-      background-color: #007aff; color: white;
-      border-radius: 18px; padding: 10px 16px;
-      max-width: 85%; font-size: 16px; line-height: 1.4;
+      background-color: #0a84ff; color: white;
+      border-radius: 20px; padding: 9px 14px;
+      max-width: 82%; font-size: 17px; line-height: 1.32;
       position: relative; margin-bottom: 6px;
       align-self: flex-end; transform-origin: right bottom;
       -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
     }
     .bubble-sent::before {
-      content: ""; position: absolute; bottom: 0; right: -6px;
-      height: 20px; width: 20px; background-color: #007aff;
-      border-bottom-left-radius: 16px; z-index: -1;
+      content: "";
+      position: absolute;
+      right: -4px;
+      bottom: 2px;
+      width: 11px;
+      height: 12px;
+      background: #0a84ff;
+      border-bottom-left-radius: 10px;
     }
 
     .slide-up { animation: slideUp 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
@@ -108,6 +150,11 @@
     }
     .modal { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
 
+    .mobile-scroll {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+
     .typing-indicator {
       background-color: #e9e9eb; padding: 12px 16px; border-radius: 18px;
       display: inline-flex; gap: 4px; margin-bottom: 8px;
@@ -120,6 +167,52 @@
     .typing-dot:nth-child(1) { animation-delay: -0.32s; }
     .typing-dot:nth-child(2) { animation-delay: -0.16s; }
     @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+    #composer-bar {
+      background: rgba(248,248,248,0.94);
+      border-top: 0.5px solid #d6d6dc;
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      padding: 8px 10px 10px;
+    }
+    #composer-plus {
+      color: #8e8e93;
+      font-size: 24px;
+      line-height: 1;
+      padding-bottom: 2px;
+    }
+    #message-input {
+      border: 1px solid #d1d1d6 !important;
+      border-radius: 18px !important;
+      background: #fff;
+      font-size: 17px !important;
+      line-height: 1.28 !important;
+      padding-top: 8px !important;
+      padding-bottom: 8px !important;
+    }
+    #message-input::placeholder {
+      color: #8e8e93;
+    }
+    #send-btn {
+      width: 33px;
+      height: 33px;
+      border-radius: 999px;
+      background: #0a84ff;
+      box-shadow: 0 3px 10px rgba(10, 132, 255, 0.28);
+      margin-bottom: 1px;
+    }
+    #send-btn i {
+      font-size: 13px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
 </head>
 
@@ -134,7 +227,7 @@
     <div class="sm:hidden h-safe-top w-full bg-white"></div>
 
     <div id="home-view" class="flex-1 flex flex-col bg-white w-full h-full">
-      <div class="p-4 border-b border-gray-100 flex justify-between items-center pt-8 sm:pt-4">
+      <div class="ios-toolbar p-4 flex justify-between items-center pt-8 sm:pt-4">
         <div class="flex items-center gap-1">
           <button onclick="openSettings()" class="text-gray-400 hover:text-gray-600 p-2" aria-label="Settings">
             <i class="fas fa-cog text-xl"></i>
@@ -145,7 +238,7 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <h1 class="text-3xl font-bold text-black tracking-tight">Messages</h1>
+          <h1 class="ios-toolbar-title">Messages</h1>
           <button onclick="initScenarios()" class="text-gray-400 hover:text-blue-500 transition-colors pt-1" aria-label="Refresh scenarios">
             <i class="fas fa-sync-alt"></i>
           </button>
@@ -156,9 +249,9 @@
         </button>
       </div>
 
-      <div class="flex-1 overflow-y-auto">
+      <div class="flex-1 overflow-y-auto mobile-scroll">
         <div class="px-4 py-2">
-          <div class="bg-gray-100 rounded-lg p-2 flex items-center gap-2 text-gray-500">
+          <div class="ios-search p-2 flex items-center gap-2">
             <i class="fas fa-search text-sm ml-1"></i><span class="text-sm">Search</span>
           </div>
         </div>
@@ -171,22 +264,22 @@
               <h3 class="font-semibold text-base truncate text-blue-600">New Simulation</h3>
               <span class="text-gray-400 text-sm">Create</span>
             </div>
-            <p id="new-sim-hint" class="text-gray-500 text-sm truncate leading-snug">Type a real text from your wife...</p>
+            <p id="new-sim-hint" class="text-gray-500 text-sm truncate leading-snug">Type or paste a custom message.</p>
           </div>
         </div>
 
         <!-- SELF-DECODE (HOME ROW) -->
-        <div onclick="openSelfDecodeModal()" class="flex items-center px-4 py-3 active:bg-gray-100 cursor-pointer border-b border-gray-100 ml-4 border-l-0 group">
+        <div onclick="openCustomScenarioModal()" class="flex items-center px-4 py-3 active:bg-gray-100 cursor-pointer border-b border-gray-100 ml-4 border-l-0 group">
           <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-lg flex-shrink-0 group-hover:bg-emerald-200 transition-colors">
             <i class="fas fa-brain"></i>
           </div>
           <div class="ml-3 flex-1 min-w-0">
             <div class="flex justify-between items-baseline mb-0.5">
               <h3 class="font-semibold text-base truncate text-emerald-700">Self-Decode</h3>
-              <span class="text-gray-400 text-sm">Decode</span>
+              <span class="text-gray-400 text-sm">Start</span>
             </div>
             <p id="self-decode-hint" class="text-gray-500 text-sm truncate leading-snug">
-              Type what you want to say. Get your emotion + a grounded rewrite.
+              Share the raw version to decode your message.
             </p>
           </div>
         </div>
@@ -195,12 +288,12 @@
       </div>
 
       <div class="bg-gray-50 border-t border-gray-200 p-4 text-center text-gray-400 text-xs safe-area-bottom pb-8">
-        <p id="mode-indicator">Offline Mode</p>
+        <p id="mode-indicator">AI Mode</p>
       </div>
     </div>
 
     <div id="chat-view" class="absolute inset-0 bg-white z-30 transform translate-x-full transition-transform duration-300 flex flex-col w-full h-full">
-      <div class="bg-white/95 backdrop-blur-md border-b border-gray-200 pt-8 sm:pt-8 pb-2 px-2 flex items-center justify-between z-10 flex-shrink-0">
+      <div class="ios-chat-header pt-8 sm:pt-8 pb-2 px-2 flex items-center justify-between z-10 flex-shrink-0">
         <button onclick="goBack()" class="flex items-center text-blue-500 px-2 py-2 -ml-1 active:opacity-50">
           <i class="fas fa-chevron-left text-xl mr-1"></i><span class="text-lg">Messages</span>
         </button>
@@ -211,7 +304,7 @@
         <div class="w-16 flex justify-end pr-2"><i class="fas fa-video text-blue-500 text-lg p-2"></i></div>
       </div>
 
-      <div id="messages-container" class="flex-1 bg-white p-4 overflow-y-auto no-scrollbar flex flex-col gap-2"></div>
+      <div id="messages-container" class="flex-1 bg-white p-4 overflow-y-auto mobile-scroll no-scrollbar flex flex-col gap-2"></div>
       <div id="typing-indicator" class="hidden pl-4 pb-2">
         <div class="typing-indicator">
           <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
@@ -224,7 +317,7 @@
           <button onclick="closeFeedback()" class="text-gray-400 hover:text-gray-600 p-2"><i class="fas fa-times"></i></button>
         </div>
 
-        <div class="overflow-y-auto flex-1 pr-2">
+        <div class="overflow-y-auto mobile-scroll flex-1 pr-2">
           <div id="feedback-badge" class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-4">WAITING</div>
 
           <p id="feedback-text" class="text-gray-700 text-sm leading-relaxed mb-4">...</p>
@@ -255,21 +348,6 @@
 
             <p id="copy-perfect-hint" class="text-[11px] text-gray-400 mt-2 hidden">Copied to clipboard.</p>
           </div>
-
-          <div id="win-cta" class="hidden mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-            <p class="text-xs font-bold uppercase tracking-widest text-blue-500 mb-1">Ready to go deeper?</p>
-            <p class="text-sm text-gray-700 leading-snug mb-3">The Grounded Pursuit Blueprint — live coaching, real frameworks, men doing the work together.</p>
-            <a href="https://www.skool.com/groundedpursuit/about" target="_blank" rel="noopener" class="block bg-blue-600 text-white py-3 rounded-lg font-bold text-sm active:bg-blue-700">
-              Join the Blueprint →
-            </a>
-          </div>
-          <div id="strikes-cta" class="hidden mt-4 bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-            <p class="text-xs font-bold uppercase tracking-widest text-red-500 mb-1">This is exactly what the Blueprint is for.</p>
-            <p class="text-sm text-gray-700 leading-snug mb-3">Real frameworks for men who are tired of the same fight. Join the Grounded Pursuit Blueprint.</p>
-            <a href="https://www.skool.com/groundedpursuit/about" target="_blank" rel="noopener" class="block bg-red-600 text-white py-3 rounded-lg font-bold text-sm active:bg-red-700">
-              Join the Blueprint →
-            </a>
-          </div>
         </div>
 
         <div class="mt-4 flex gap-2 flex-shrink-0">
@@ -278,12 +356,12 @@
         </div>
       </div>
 
-      <div class="bg-white border-t border-gray-200 p-3 flex items-end gap-3 pb-4 safe-area-bottom w-full z-20 flex-shrink-0">
-        <div class="text-gray-400 text-2xl pb-1 pl-1"><i class="fas fa-plus-circle"></i></div>
+      <div id="composer-bar" class="p-3 flex items-end gap-3 pb-4 safe-area-bottom w-full z-20 flex-shrink-0">
+        <div id="composer-plus" class="text-2xl pb-1 pl-1"><i class="fas fa-plus-circle"></i></div>
         <div class="flex-1 relative">
-          <textarea id="message-input" rows="1" class="w-full border border-gray-300 rounded-2xl py-2 px-4 text-base focus:outline-none focus:border-gray-400 resize-none max-h-32" placeholder="iMessage"></textarea>
+          <textarea id="message-input" rows="1" enterkeyhint="send" autocapitalize="sentences" autocorrect="on" spellcheck="true" class="w-full border border-gray-300 rounded-2xl py-2 px-4 text-base focus:outline-none focus:border-gray-400 resize-none max-h-32" placeholder="iMessage"></textarea>
         </div>
-        <button onclick="handleUserSend()" class="bg-blue-500 text-white rounded-full w-9 h-9 flex items-center justify-center mb-0.5 hover:bg-blue-600 transition-colors flex-shrink-0 active:scale-95">
+        <button id="send-btn" onclick="handleUserSend()" class="text-white rounded-full w-9 h-9 flex items-center justify-center mb-0.5 hover:bg-blue-600 transition-colors flex-shrink-0 active:scale-95">
           <i class="fas fa-arrow-up text-sm font-bold"></i>
         </button>
       </div>
@@ -292,16 +370,19 @@
     <!-- CUSTOM SCENARIO MODAL -->
     <div id="custom-modal" class="hidden absolute inset-0 z-50 modal flex items-center justify-center p-6 fade-in">
       <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl m-4">
-        <h2 id="custom-modal-title" class="text-xl font-bold mb-2">Create Custom Scenario</h2>
-        <p id="custom-modal-hint" class="text-gray-500 text-sm mb-4">Type the text your wife actually sent you.</p>
-        <textarea id="custom-input" class="w-full border border-gray-300 rounded-lg p-3 text-base mb-3 focus:ring-2 focus:ring-blue-500 focus:outline-none" rows="3" placeholder="Ex: You never help with the kids..."></textarea>
-        <div class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-4 flex items-center gap-2">
-          <i class="fas fa-lock text-amber-400 text-sm flex-shrink-0"></i>
-          <p class="text-xs text-amber-800 leading-snug">Free version uses keyword feedback. <a href="https://www.skool.com/groundedpursuit/about" target="_blank" class="font-bold underline">Upgrade for AI-powered responses.</a></p>
-        </div>
+        <h2 id="custom-modal-title" class="text-xl font-bold mb-2">Create Scenario</h2>
+        <p id="custom-modal-hint" class="text-gray-500 text-sm mb-3">Type or paste a custom message.</p>
+        <textarea id="custom-input" onpaste="handleCustomPasteImage(event)" class="w-full border border-gray-300 rounded-lg p-3 text-base mb-3 focus:ring-2 focus:ring-blue-500 focus:outline-none" rows="4" placeholder="Paste text here..."></textarea>
+
+        <input id="custom-image-input" type="file" accept="image/*" class="hidden" onchange="handleCustomImageSelect(event)">
+        <button onclick="triggerCustomImageUpload()" class="w-full py-2.5 mb-2 bg-gray-100 rounded-lg font-semibold text-gray-700 active:bg-gray-200">
+          Upload Screenshot
+        </button>
+        <p id="custom-upload-status" class="text-xs text-gray-500 mb-3">No screenshot selected</p>
+
         <div class="flex gap-2">
-          <button onclick="document.getElementById('custom-modal').classList.add('hidden')" class="flex-1 py-3 bg-gray-100 rounded-lg font-semibold text-gray-700 active:bg-gray-200">Cancel</button>
-          <button onclick="startCustomScenario()" class="flex-1 py-3 bg-blue-600 rounded-lg font-semibold text-white active:bg-blue-700">Start</button>
+          <button onclick="closeCustomScenarioModal()" class="flex-1 py-3 bg-gray-100 rounded-lg font-semibold text-gray-700 active:bg-gray-200">Cancel</button>
+          <button id="custom-start-btn" onclick="startCustomScenario()" class="flex-1 py-3 bg-blue-600 rounded-lg font-semibold text-white active:bg-blue-700">Start</button>
         </div>
       </div>
     </div>
@@ -311,13 +392,13 @@
       <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl m-4">
         <h2 class="text-xl font-bold mb-2">Self-Decode</h2>
         <p class="text-gray-500 text-sm mb-4">
-          Type what you want to say (authentic). I'll decode your emotion + give you a grounded rewrite.
+          Type what you want to say (authentic). I’ll decode your emotion + give you a grounded rewrite.
         </p>
 
         <textarea id="selfdecode-input"
                   class="w-full border border-gray-300 rounded-lg p-3 text-base mb-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   rows="4"
-                  placeholder="Ex: I'm tired of feeling like I'm doing this alone..."></textarea>
+                  placeholder="Ex: I’m tired of feeling like I’m doing this alone..."></textarea>
 
         <div class="flex gap-2">
           <button onclick="closeSelfDecodeModal()" class="flex-1 py-3 bg-gray-100 rounded-lg font-semibold text-gray-700 active:bg-gray-200">Cancel</button>
@@ -328,7 +409,7 @@
       </div>
     </div>
 
-    <!-- SELF-DECODE RESULTS OVERLAY -->
+    <!-- SELF-DECODE RESULTS OVERLAY (GLOBAL: shows immediately from home) -->
     <div id="selfdecode-overlay" class="hidden absolute inset-0 z-50 modal flex items-center justify-center p-6 fade-in">
       <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl m-4 flex flex-col max-h-[85vh]">
         <div class="flex items-start justify-between mb-2">
@@ -342,7 +423,7 @@
           Decoding your message…
         </p>
 
-        <div class="overflow-y-auto flex-1 pr-1">
+        <div class="overflow-y-auto mobile-scroll flex-1 pr-1">
           <div class="bg-emerald-50 border-l-4 border-emerald-400 p-3 rounded-r-lg mb-4">
             <span class="text-xs font-bold text-emerald-800 uppercase tracking-widest block mb-1">
               <i class="fas fa-heart mr-1"></i> Emotion Decoder
@@ -369,12 +450,7 @@
           <p id="selfdecode-copy-hint" class="text-[11px] text-gray-400 mt-2 hidden">Copied to clipboard.</p>
         </div>
 
-        <div class="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-4 flex items-center gap-2">
-          <i class="fas fa-lock text-amber-400 text-sm flex-shrink-0"></i>
-          <p class="text-xs text-amber-800 leading-snug">Free version uses keyword feedback. <a href="https://www.skool.com/groundedpursuit/about" target="_blank" class="font-bold underline">Upgrade for AI-powered responses.</a></p>
-        </div>
-
-        <div class="mt-3">
+        <div class="mt-4">
           <button onclick="closeSelfDecodeOverlay()" class="w-full py-3 bg-emerald-600 text-white rounded-lg font-semibold active:bg-emerald-700">
             Done
           </button>
@@ -398,6 +474,13 @@
         </div>
 
         <div class="mb-6">
+          <label class="block text-xs font-bold uppercase text-gray-400 mb-1">AI</label>
+          <p class="text-gray-600 text-sm">
+            AI is powered by the server. No API key is stored in this page.
+          </p>
+        </div>
+
+        <div class="mb-6">
           <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Other Person Persona</label>
           <div class="grid grid-cols-2 gap-2">
             <button onclick="setPersona('pursuer')" id="btn-pursuer" class="py-3 text-sm font-bold rounded border bg-blue-100 border-blue-500 text-blue-700 transition-colors">Pursuer</button>
@@ -411,6 +494,7 @@
         <div class="flex gap-2">
           <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="flex-1 py-3 bg-gray-100 rounded-lg font-semibold text-gray-700">Close</button>
         </div>
+
       </div>
     </div>
 
@@ -433,7 +517,7 @@
           <li><span class="font-semibold">Type your reply</span> and hit <span class="font-semibold">Send</span>.</li>
           <li>Read the feedback + Emotion Decoder, then tap <span class="font-semibold">Copy</span> to grab the Grounded Response.</li>
           <li>Tap <span class="font-semibold">Edit</span> to retry or <span class="font-semibold">Continue</span> to keep the conversation going.</li>
-          <li>Use the <span class="font-semibold">gear</span> to switch who you're practicing with + persona.</li>
+          <li>Use the <span class="font-semibold">gear</span> to switch who you’re practicing with + persona.</li>
           <li>Use <span class="font-semibold">Self-Decode</span> to rewrite what <em>you</em> want to say (emotion + grounded rewrite).</li>
           <li><span class="font-semibold">Win</span> a scenario by getting <span class="font-semibold">3 greens</span> in a row, or <span class="font-semibold">2 greens + 1 yellow</span> (no reds) across your last 3 replies.</li>
         </ol>
@@ -446,24 +530,107 @@
       </div>
     </div>
 
+    <!-- ✅ ALL SCENARIOS WON (CATEGORY) MODAL -->
+    <div id="allwon-modal" class="hidden absolute inset-0 z-[1000] modal flex items-center justify-center p-6 fade-in">
+      <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl m-4">
+        <div class="flex items-start justify-between mb-2">
+          <h2 id="allwon-title" class="text-xl font-bold">You cleared this category ✅</h2>
+          <button onclick="closeAllWonModal()" class="text-gray-400 hover:text-gray-600 p-2" aria-label="Close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <p id="allwon-subtitle" class="text-gray-600 text-sm mb-4">
+          That’s real progress. Want to turn this into real-life reps?
+        </p>
+
+        <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-4">
+          <p class="text-emerald-900 text-sm font-medium leading-relaxed">
+            Schedule a quick call with Phil:
+          </p>
+          <a href="https://foundationcall.netlify.app/"
+             target="_blank" rel="noopener"
+             class="inline-flex items-center gap-2 mt-3 w-full justify-center py-3 bg-emerald-600 text-white rounded-lg font-semibold active:bg-emerald-700">
+            <i class="fas fa-calendar-check"></i>
+            Schedule a call
+          </a>
+
+          <p class="text-[11px] text-emerald-900/70 mt-2 break-words">
+            https://foundationcall.netlify.app/
+          </p>
+        </div>
+
+        <p class="text-gray-500 text-xs leading-snug mb-4">
+          Quick move: screenshot this and send it to a buddy. You earned the bragging rights. 😄
+        </p>
+
+        <div class="flex gap-2">
+          <button onclick="closeAllWonModal()" class="flex-1 py-3 bg-gray-100 rounded-lg font-semibold text-gray-700 active:bg-gray-200">
+            Not now
+          </button>
+          <a href="https://foundationcall.netlify.app/"
+             target="_blank" rel="noopener"
+             class="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold text-center active:bg-blue-700">
+            Open link
+          </a>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
     (function () {
+      let viewportResizeRaf = 0;
+
       function setAppHeight() {
         const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
         document.documentElement.style.setProperty('--app-height', `${Math.round(h)}px`);
+
+        if (document.activeElement && document.activeElement.id === 'message-input') {
+          requestAnimationFrame(scrollToBottom);
+        }
       }
-      setAppHeight();
-      window.addEventListener('resize', setAppHeight);
-      window.addEventListener('orientationchange', setAppHeight);
-      if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+
+      function queueSetAppHeight() {
+        if (viewportResizeRaf) cancelAnimationFrame(viewportResizeRaf);
+        viewportResizeRaf = requestAnimationFrame(setAppHeight);
+      }
+
+      queueSetAppHeight();
+      window.addEventListener('resize', queueSetAppHeight, { passive: true });
+      window.addEventListener('orientationchange', queueSetAppHeight, { passive: true });
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', queueSetAppHeight, { passive: true });
     })();
 
-    // ============================
-    // OFFLINE MODE
-    // ============================
-    const aiEnabled = false; // OFFLINE: local grading + canned replies only
+    let gpAppStarted = false;
+    const memoryStore = {};
+    const safeStorage = {
+      getItem(key) {
+        try {
+          if (window.localStorage) return window.localStorage.getItem(key);
+        } catch (e) {}
+        return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : null;
+      },
+      setItem(key, value) {
+        const str = String(value);
+        try {
+          if (window.localStorage) {
+            window.localStorage.setItem(key, str);
+            return;
+          }
+        } catch (e) {}
+        memoryStore[key] = str;
+      },
+      removeItem(key) {
+        try {
+          if (window.localStorage) {
+            window.localStorage.removeItem(key);
+          }
+        } catch (e) {}
+        delete memoryStore[key];
+      }
+    };
 
     // ============================
     // HELP
@@ -475,22 +642,23 @@
       document.getElementById('help-modal').classList.remove('hidden');
     }
     function closeHelp() { document.getElementById('help-modal').classList.add('hidden'); }
-    function ackHelpAndClose() { localStorage.setItem(HELP_SEEN_KEY, "1"); closeHelp(); }
+    function ackHelpAndClose() { safeStorage.setItem(HELP_SEEN_KEY, "1"); closeHelp(); }
     function showHelpIfFirstTime() {
-      if (!localStorage.getItem(HELP_SEEN_KEY)) setTimeout(() => openHelp(false), 250);
+      if (!safeStorage.getItem(HELP_SEEN_KEY)) setTimeout(() => openHelp(false), 250);
     }
 
     // CONFIG
-    let wifePersona = localStorage.getItem('wife_persona') || 'pursuer';
-    let practicePerson = localStorage.getItem('practice_person') || 'wife';
+    const aiEnabled = true; // server-side AI via Apps Script
+    let wifePersona = safeStorage.getItem('wife_persona') || 'pursuer';
+    let practicePerson = safeStorage.getItem('practice_person') || 'wife';
 
     // COMPLETIONS
     const COMPLETED_KEY = "gp_completed_v1";
     function loadCompleted() {
-      try { return JSON.parse(localStorage.getItem(COMPLETED_KEY) || "{}"); }
+      try { return JSON.parse(safeStorage.getItem(COMPLETED_KEY) || "{}"); }
       catch { return {}; }
     }
-    function saveCompleted(obj) { localStorage.setItem(COMPLETED_KEY, JSON.stringify(obj || {})); }
+    function saveCompleted(obj) { safeStorage.setItem(COMPLETED_KEY, JSON.stringify(obj || {})); }
     function isScenarioCompleted(person, scenarioId) {
       const store = loadCompleted();
       const arr = store[person] || [];
@@ -504,40 +672,70 @@
       saveCompleted(store);
     }
 
+    // ✅ "ALL WON" modal (once per category)
+    const ALL_WON_SHOWN_KEY = "gp_allwon_shown_v1";
+    function loadAllWonShown() {
+      try { return JSON.parse(safeStorage.getItem(ALL_WON_SHOWN_KEY) || "{}"); }
+      catch { return {}; }
+    }
+    function saveAllWonShown(obj) { safeStorage.setItem(ALL_WON_SHOWN_KEY, JSON.stringify(obj || {})); }
+
+    function openAllWonModal(person) {
+      const title = document.getElementById('allwon-title');
+      const subtitle = document.getElementById('allwon-subtitle');
+      const pretty = ({
+        wife: "Wife",
+        girlfriend: "Girlfriend",
+        family: "Family",
+        coworker: "Coworker"
+      })[person] || "this";
+
+      if (title) title.innerText = `You cleared ${pretty} ✅`;
+      if (subtitle) subtitle.innerText = "That’s real progress. Want to turn this into real-life reps?";
+
+      document.getElementById('allwon-modal').classList.remove('hidden');
+    }
+    function closeAllWonModal() {
+      document.getElementById('allwon-modal').classList.add('hidden');
+    }
+
     // SELF-DECODE state
     let selfDecodeBusy = false;
+    let customScenarioBusy = false;
+    let customImageDataUrl = "";
+    let customImageName = "";
 
     const personConfig = {
       wife: {
         label: "Wife ❤️",
         noun: "wife",
         avatar: "W",
-        newSimHint: "Type a real text from your wife...",
-        customHint: "Type the text your wife actually sent you.",
+        newSimHint: "Type or paste a custom message.",
+        customHint: "Type or paste a custom message.",
         customPlaceholder: "Ex: You never listen to me..."
       },
       girlfriend: {
-        label: "Girlfriend 💛",
+        label: "Girlfriend 💜",
         noun: "girlfriend",
         avatar: "G",
-        newSimHint: "Type a real text from your girlfriend...",
-        customHint: "Type the text your girlfriend actually sent you.",
+        newSimHint: "Type or paste a custom message.",
+        customHint: "Type or paste a custom message.",
         customPlaceholder: "Ex: Are you ignoring me?"
       },
       family: {
         label: "Family Member 👪",
         noun: "family member",
         avatar: "F",
-        newSimHint: "Type a real text from your family member...",
-        customHint: "Type the text your family member actually sent you.",
+        newSimHint: "Type or paste a custom message.",
+        customHint: "Type or paste a custom message.",
         customPlaceholder: "Ex: You never call anymore."
       },
       coworker: {
         label: "Coworker 💼",
         noun: "coworker",
         avatar: "C",
-        newSimHint: "Type a real text from your coworker...",
-        customHint: "Type the message your coworker sent you.",
+        newSimHint: "Type or paste a custom message.",
+        customHint: "Type or paste a custom message.",
         customPlaceholder: "Ex: Can you send that by EOD?"
       }
     };
@@ -552,6 +750,58 @@
       return (personConfig[practicePerson] && personConfig[practicePerson].avatar) ? personConfig[practicePerson].avatar : "W";
     }
 
+    function philVoicePrompt() {
+      return `Write at an 8th grade reading level.
+Sound like Phil Merrell at Grounded Pursuit: calm, steady, warm, practical, and direct.
+Write like a real text message, not a therapy worksheet.
+Use 1-2 short sentences (about 18-34 words total).
+Lead with reflection + one ownership line when needed + one gentle reconnect question.
+Prefer phrases like: "I hear you", "that would feel awful", "I want us on the same team", "help me understand what this was like for you", "tell me more".
+Avoid robotic or clinical language like: "validate", "dynamics", "emotional regulation", "attachment", "nervous system", "underlying process".`;
+    }
+
+    function polishGroundedResponse(text) {
+      const fallbackByRole = {
+        coworker: "I hear you. You're right to flag it. That's on me. What do you need first so we're aligned?",
+        family: "I hear you. That makes sense. I don't want us fighting. Help me understand what felt hardest for you.",
+        wife: "I hear you. You're right, that hurt. I don't want us fighting. Help me understand what part hit hardest for you.",
+        girlfriend: "I hear you. That makes sense. I don't want distance between us. Help me understand what part hit hardest for you."
+      };
+
+      let out = String(text || "").trim();
+      out = out.replace(/^["'“”]+|["'“”]+$/g, '');
+      out = out.replace(/\s+/g, ' ').trim();
+
+      const swaps = [
+        [/I understand your feelings\.?/gi, "I hear you."],
+        [/Your feelings are valid\.?/gi, "That makes sense."],
+        [/I want to understand what felt most painful for you there\.?/gi, "Help me understand what part hit hardest for you."],
+        [/I can see how you feel/gi, "I can see why that felt"],
+        [/\bemotional safety\b/gi, "safety"],
+        [/\bnervous system\b/gi, "system"],
+        [/\battachment style\b/gi, "pattern"]
+      ];
+      swaps.forEach(([re, rep]) => {
+        out = out.replace(re, rep);
+      });
+
+      if (!out) {
+        return fallbackByRole[practicePerson] || fallbackByRole.wife;
+      }
+
+      const sentences = out.split(/(?<=[.!?])\s+/).filter(Boolean);
+      if (sentences.length > 2) out = sentences.slice(0, 2).join(' ');
+
+      if (out.length < 24) {
+        const tail = practicePerson === 'coworker'
+          ? "What do you need first from me?"
+          : "Help me understand what this was like for you.";
+        out = `${out} ${tail}`.trim();
+      }
+
+      return out;
+    }
+
     function updateContactUI() {
       const label = document.getElementById('contact-label');
       const avatar = document.getElementById('contact-avatar');
@@ -559,7 +809,8 @@
       if (avatar) avatar.innerText = getPersonAvatar();
 
       const newHint = document.getElementById('new-sim-hint');
-      if (newHint) newHint.innerText = personConfig[practicePerson]?.newSimHint || "Type a real text from your wife...";
+      const cfg = personConfig[practicePerson] || {};
+      if (newHint) newHint.innerText = cfg.newSimHint || "Type or paste a custom message.";
 
       updateCustomModalCopy();
     }
@@ -567,12 +818,13 @@
     function updateCustomModalCopy() {
       const hint = document.getElementById('custom-modal-hint');
       const input = document.getElementById('custom-input');
-      if (hint) hint.innerText = personConfig[practicePerson]?.customHint || "Type the text your wife actually sent you.";
-      if (input) input.setAttribute('placeholder', personConfig[practicePerson]?.customPlaceholder || "Ex: You never listen to me...");
+      const cfg = personConfig[practicePerson] || {};
+      if (hint) hint.innerText = cfg.customHint || "Type or paste a custom message.";
+      if (input) input.setAttribute('placeholder', cfg.customPlaceholder || "Ex: You never listen to me...");
     }
 
     // --- DATA ---
-    const universalRedFlags = ["calm down", "crazy", "always", "never", "relax", "wrong", "drama", "lying", "childish", "grow up", "chill", "bitch", "fuck", "shit", "asshole", "damn", "stupid", "idiot", "jerk", "shut up", "you suck", "loser", "pathetic", "worst", "hate you", "narcissist", "toxic", "yes you do", "no i didn't", "no i don't", "i did", "not true", "whatever", "fine, whatever", "fine whatever", "forget it", "i don't care", "don't care", "do whatever", "doesn't matter", "doesn't even matter", "who cares", "good luck", "sure, fine", "sure fine", "go ahead"];
+    const universalRedFlags = ["calm down", "crazy", "always", "never", "relax", "wrong", "drama", "lying", "childish", "grow up", "chill", "bitch", "fuck", "shit", "asshole", "damn", "stupid", "idiot", "jerk", "shut up", "you suck", "loser", "pathetic", "worst", "hate you", "narcissist", "toxic", "yes you do", "no i didn't", "no i don't", "i did", "not true"];
     const universalGreenFlags = ["hear you", "hear that", "hearing that", "hearing you", "feel like", "feels like", "must be", "must feel", "frustrating", "frustrated", "hard", "tough", "rough", "makes sense", "total sense", "totally sense", "make sense", "sorry", "apologize", "my bad", "understand", "understood", "get it", "got it", "getting it", "sounds like", "sound like", "sounds", "valid", "fair", "totally fair", "fair point", "hear ya", "stress", "stressful", "overwhelmed", "love you", "love ya", "i love you", "care about you", "care for you", "team", "together", "partner", "on the same page", "that sucks", "miss you", "miss us", "want that too", "want the same"];
 
     // ==========================
@@ -582,63 +834,43 @@
       wife: [
         {
           id: 'attack', name: "The Attack", preview: "You never listen to me...", timestamp: "Now",
-          initialText: "You never listen to me. It's like I'm talking to a wall. I asked you to do one thing!",
+          initialText: "You never listen to me. It’s like I’m talking to a wall. I asked you to do one thing!",
           redFlags: ["did do", "nagging", "busy", ...universalRedFlags],
           greenFlags: ["wall", "ignored", "ignoring", "listen", "heard", ...universalGreenFlags],
           translation: "She feels unseen and alone. She needs to know she matters to you.",
-          perfectResponse: "I hear you. It makes sense you're upset. I want to slow down and really listen right now.",
-          tips: "Don't fight the facts. Start with the feeling and the impact.",
-          followUp: { green: "Okay… I just feel like I'm carrying this alone sometimes.", yellow: "I don't know. I'm just frustrated.", red: "See? You're doing it again." },
-          followUps: [
-            { green: "Okay… I just feel like I'm carrying this alone sometimes.", yellow: "I don't know. I'm just frustrated.", red: "See? You're doing it again." },
-            { green: "It's like you're here but not really here. You know?", yellow: "I just need to feel like what I say actually lands with you.", red: "This is exactly the problem right here." },
-            { green: "I just want to feel like we're actually connected again. Not just roommates.", yellow: "Okay. I'm listening. What do you need from me?", red: "I'm done trying to explain it to you." }
-          ]
+          perfectResponse: "I hear you. It makes sense you’re upset. I want to slow down and really listen right now.",
+          tips: "Don’t fight the facts. Start with the feeling and the impact.",
+          followUp: { green: "Okay… I just feel like I’m carrying this alone sometimes.", yellow: "I don’t know. I’m just frustrated.", red: "See? You’re doing it again." }
         },
         {
           id: 'overwhelm', name: "Overwhelmed", preview: "The house is a wreck...", timestamp: "10m ago",
-          initialText: "The house is a wreck, the kids are screaming, and you're just sitting there on your phone! Do I have to do everything?",
+          initialText: "The house is a wreck, the kids are screaming, and you’re just sitting there on your phone! Do I have to do everything?",
           redFlags: ["just", "working", "minute", "why are you", "help", ...universalRedFlags],
           greenFlags: ["wreck", "chaos", "alone", "phone", "kids", "everything", "drowning", ...universalGreenFlags],
           translation: "She feels overwhelmed and unsupported. She needs teamwork and relief.",
-          perfectResponse: "I see how chaotic this feels. You shouldn't feel alone in it. I'm putting the phone down and I'm in.",
+          perfectResponse: "I see how chaotic this feels. You shouldn’t feel alone in it. I’m putting the phone down and I’m in.",
           tips: "Helping matters, but naming the stress builds safety fast.",
-          followUp: { green: "Thank you. I'm just exhausted.", yellow: "Can you please do the kitchen?", red: "You care more about that screen than this family." },
-          followUps: [
-            { green: "Thank you. I'm just exhausted.", yellow: "Can you please do the kitchen?", red: "You care more about that screen than this family." },
-            { green: "I just need you to see it without me having to point it out every time.", yellow: "I need you to step up without me asking, just once.", red: "Every single day it's the same thing." },
-            { green: "I know you're trying. I just need more of you actually present.", yellow: "Okay. Let's just get through tonight.", red: "I'm running on empty and I don't know how much longer I can do this." }
-          ]
+          followUp: { green: "Thank you. I’m just exhausted.", yellow: "Can you please do the kitchen?", red: "You care more about that screen than this family." }
         },
         {
           id: 'money', name: "Money Stress", preview: "Did you seriously spend...", timestamp: "Tuesday",
-          initialText: "Did you seriously spend $200 on that? We're supposed to be saving for the trip!",
+          initialText: "Did you seriously spend $200 on that? We’re supposed to be saving for the trip!",
           redFlags: ["my money", "not a big deal", "controlling", "budget", ...universalRedFlags],
           greenFlags: ["worried", "trip", "savings", "save", "money", "scared", "spend", "spending", ...universalGreenFlags],
           translation: "She feels anxious about stability. She needs safety and a plan.",
-          perfectResponse: "I get why that spiked your stress. The trip matters. Let's look at it together and get back on the same page.",
-          tips: "Money fights usually aren't about math—they're about safety.",
-          followUp: { green: "I just don't want us to fall behind.", yellow: "We need to stick to the plan.", red: "You're so careless." },
-          followUps: [
-            { green: "I just don't want us to fall behind.", yellow: "We need to stick to the plan.", red: "You're so careless." },
-            { green: "I'm not trying to control you. I just get scared when I see us off track.", yellow: "Can we actually look at the numbers this week?", red: "This is why I can't trust you with the finances." },
-            { green: "Okay. I just need to know we have a real plan. Not just words.", yellow: "Okay. But we have to actually do it.", red: "I'm serious. This can't keep happening." }
-          ]
+          perfectResponse: "I get why that spiked your stress. The trip matters. Let’s look at it together and get back on the same page.",
+          tips: "Money fights usually aren’t about math—they’re about safety.",
+          followUp: { green: "I just don’t want us to fall behind.", yellow: "We need to stick to the plan.", red: "You’re so careless." }
         },
         {
           id: 'shutdown', name: "The Shutdown", preview: "I'm fine. Just leave me...", timestamp: "Yesterday",
-          initialText: "I'm fine. Just leave me alone.",
+          initialText: "I’m fine. Just leave me alone.",
           redFlags: ["tell me", "what's wrong", "lying", "not fine", "talk", ...universalRedFlags],
           greenFlags: ["space", "here when", "ready", "check in", "okay", "alright", "fine", "alone", ...universalGreenFlags],
           translation: "She feels flooded. She needs space and calm, without feeling abandoned.",
-          perfectResponse: "Okay. I'll give you space. I'm here when you're ready, and I love you.",
+          perfectResponse: "Okay. I’ll give you space. I’m here when you’re ready, and I love you.",
           tips: "Respect the boundary, but keep the connection open.",
-          followUp: { green: "Thanks. I just need a minute to calm down.", yellow: "Okay.", red: "Why can't you just listen? Leave me alone." },
-          followUps: [
-            { green: "Thanks. I just need a minute to calm down.", yellow: "Okay.", red: "Why can't you just listen? Leave me alone." },
-            { green: "I'm not trying to shut you out. I just get so flooded I can't think.", yellow: "I'll come out when I'm ready.", red: "I said leave me alone. I mean it." },
-            { green: "Okay. I think I'm ready to talk. Can you just sit with me?", yellow: "Okay. Give me ten more minutes.", red: "I don't even know how to do this with you anymore." }
-          ]
+          followUp: { green: "Thanks. I just need a minute to calm down.", yellow: "Okay.", red: "Why can’t you just listen? Leave me alone." }
         },
         {
           id: 'parenting', name: "Parenting Clash", preview: "You need to be harder on...", timestamp: "Friday",
@@ -646,44 +878,29 @@
           redFlags: ["he's a kid", "mean", "strict", "lighten up", ...universalRedFlags],
           greenFlags: ["undermined", "alone", "bad guy", "team", "strict", "harder", "kids", ...universalGreenFlags],
           translation: "She feels alone in parenting. She needs you to be on her team.",
-          perfectResponse: "I hear you. It feels like I'm not backing you up, and that leaves you carrying it alone. I want us to be a team with the kids.",
+          perfectResponse: "I hear you. It feels like I’m not backing you up, and that leaves you carrying it alone. I want us to be a team with the kids.",
           tips: "Validate the teamwork gap before you talk rules.",
-          followUp: { green: "Yes. I hate being the only bad guy.", yellow: "Just back me up next time.", red: "You just want to be the fun dad." },
-          followUps: [
-            { green: "Yes. I hate being the only bad guy.", yellow: "Just back me up next time.", red: "You just want to be the fun dad." },
-            { green: "It's just exhausting being the enforcer alone. I need a partner, not another kid.", yellow: "Can we get on the same page before he pushes it again?", red: "He sees it. He knows you'll let it go. It undermines everything." },
-            { green: "Thank you. That's all I've been asking for. Just stand next to me.", yellow: "Okay. I'll let it go for now. But we need to talk about it tonight.", red: "I don't know how to do this if you're not with me." }
-          ]
+          followUp: { green: "Yes. I hate being the only bad guy.", yellow: "Just back me up next time.", red: "You just want to be the fun dad." }
         },
         {
           id: 'roommate', name: "Roommate Rut", preview: "I feel like we're just...", timestamp: "2h ago",
-          initialText: "I feel like we're just roommates. You never touch me or look at me anymore.",
+          initialText: "I feel like we’re just roommates. You never touch me or look at me anymore.",
           redFlags: ["tired", "busy", "pressure", "sex", ...universalRedFlags],
           greenFlags: ["roommates", "lonely", "disconnect", "distant", "touch", "intimacy", "miss you", ...universalGreenFlags],
           translation: "She feels lonely and unwanted. She needs closeness and reassurance.",
-          perfectResponse: "I hear you. That would hurt. I don't want you feeling alone next to me—I want to reconnect.",
-          tips: "Start with the pain. Don't jump straight to logistics or sex.",
-          followUp: { green: "I just miss you… I miss us.", yellow: "I don't know what to do anymore.", red: "It feels like you don't care." },
-          followUps: [
-            { green: "I just miss you… I miss us.", yellow: "I don't know what to do anymore.", red: "It feels like you don't care." },
-            { green: "I'm not asking for everything. I just need something small that says I matter to you.", yellow: "I just need more than this.", red: "When did we stop trying?" },
-            { green: "Okay. I believe you. I just needed to hear it.", yellow: "Okay. What does that actually look like for you?", red: "I can't keep feeling invisible in my own marriage." }
-          ]
+          perfectResponse: "I hear you. That would hurt. I don’t want you feeling alone next to me—I want to reconnect.",
+          tips: "Start with the pain. Don’t jump straight to logistics or sex.",
+          followUp: { green: "I just miss you… I miss us.", yellow: "I don’t know what to do anymore.", red: "It feels like you don’t care." }
         },
         {
           id: 'inlaws', name: "In-Law Loyalty", preview: "I can't believe you let...", timestamp: "Sunday",
-          initialText: "I can't believe you let your mom talk to me like that. You never take my side!",
+          initialText: "I can’t believe you let your mom talk to me like that. You never take my side!",
           redFlags: ["she didn't", "sensitive", "my mom", "drama", ...universalRedFlags],
           greenFlags: ["side", "alone", "defend", "hurt", "team", "support", "mom", ...universalGreenFlags],
           translation: "She feels unprotected. She needs to know you have her back.",
-          perfectResponse: "I hear you. That felt like I didn't protect you, and that hurts. I want you to know I'm on your team.",
+          perfectResponse: "I hear you. That felt like I didn’t protect you, and that hurts. I want you to know I’m on your team.",
           tips: "Support your wife first. You can deal with mom later.",
-          followUp: { green: "I just need to know we're a team.", yellow: "It happens a lot.", red: "You always choose her over me." },
-          followUps: [
-            { green: "I just need to know we're a team.", yellow: "It happens a lot.", red: "You always choose her over me." },
-            { green: "I don't need you to fight her. I just need you to stand next to me.", yellow: "It just makes me feel like an outsider in my own family.", red: "Every single time. I don't exist when she's around." },
-            { green: "Okay. I believe you. That's all I needed.", yellow: "Okay. Can we just have a plan for next time?", red: "I'm not going back there until something changes." }
-          ]
+          followUp: { green: "I just need to know we’re a team.", yellow: "It happens a lot.", red: "You always choose her over me." }
         },
         {
           id: 'work', name: "Late Again", preview: "Dinner is cold...", timestamp: "8:30 PM",
@@ -693,27 +910,17 @@
           translation: "She feels like a low priority. She needs to feel chosen.",
           perfectResponse: "I get why that hurt. Waiting alone is hard. I want you to feel like a priority to me.",
           tips: "Impact first. Explanations come later (if needed).",
-          followUp: { green: "I just miss dinner with you.", yellow: "Just microwave it.", red: "Go marry your job then." },
-          followUps: [
-            { green: "I just miss dinner with you.", yellow: "Just microwave it.", red: "Go marry your job then." },
-            { green: "I know work is real. I just need to feel like we're still a priority.", yellow: "Can you at least text me when it's going to be late?", red: "You keep saying it'll change and it never does." },
-            { green: "Okay. I believe you. Just show me.", yellow: "Okay. One more chance.", red: "I'm tired of coming last." }
-          ]
+          followUp: { green: "I just miss dinner with you.", yellow: "Just microwave it.", red: "Go marry your job then." }
         },
         {
           id: 'tone', name: "Tone Police", preview: "Don't speak to me in...", timestamp: "Now",
-          initialText: "Don't speak to me in that tone! You sound exactly like your father.",
+          initialText: "Don’t speak to me in that tone! You sound exactly like your father.",
           redFlags: ["what tone", "didn't", "sensitive", "you started", ...universalRedFlags],
           greenFlags: ["tone", "harsh", "scary", "hurt", "sounded", ...universalGreenFlags],
           translation: "She feels scared or talked down to. She needs emotional safety.",
-          perfectResponse: "You're right. My tone was sharp. I'm sorry—let me slow down and try that again.",
-          tips: "Own impact. Don't argue what you “meant.”",
-          followUp: { green: "Thank you. That helps.", yellow: "Just watch it next time.", red: "You're turning into him." },
-          followUps: [
-            { green: "Thank you. That helps.", yellow: "Just watch it next time.", red: "You're turning into him." },
-            { green: "It's not what you say, it's how you say it. That's what scares me.", yellow: "I hear you. I just need you to catch it before I have to say something.", red: "That tone makes me want to shut down completely." },
-            { green: "Okay. I appreciate you owning it. That matters.", yellow: "Okay. Just be more careful.", red: "I'm serious. That cannot keep happening." }
-          ]
+          perfectResponse: "You’re right. My tone was sharp. I’m sorry—let me slow down and try that again.",
+          tips: "Own impact. Don’t argue what you “meant.”",
+          followUp: { green: "Thank you. That helps.", yellow: "Just watch it next time.", red: "You’re turning into him." }
         },
         {
           id: 'public', name: "Embarrassed", preview: "You made me look...", timestamp: "Last Night",
@@ -721,122 +928,82 @@
           redFlags: ["you were wrong", "facts", "joke", "sensitive", ...universalRedFlags],
           greenFlags: ["stupid", "embarrassed", "small", "friends", "public", "humiliated", ...universalGreenFlags],
           translation: "She feels humiliated. She needs to feel safe with you in public.",
-          perfectResponse: "I hear you. That was embarrassing, and I didn't have your back. I'm sorry.",
+          perfectResponse: "I hear you. That was embarrassing, and I didn’t have your back. I’m sorry.",
           tips: "Public shame sticks. Validate and take responsibility.",
-          followUp: { green: "I just want to feel safe with you.", yellow: "It was embarrassing.", red: "I'm not going out with you again." },
-          followUps: [
-            { green: "I just want to feel safe with you.", yellow: "It was embarrassing.", red: "I'm not going out with you again." },
-            { green: "I need to know that when we're out, you're on my side. Not correcting me.", yellow: "It made me want to disappear.", red: "I looked stupid and you didn't even notice." },
-            { green: "Okay. That's what I needed. I love you.", yellow: "Okay. Just think before you speak next time.", red: "I need space from this right now." }
-          ]
+          followUp: { green: "I just want to feel safe with you.", yellow: "It was embarrassing.", red: "I’m not going out with you again." }
         },
         {
           id: 'silent', name: "The Silent Treatment", preview: "...", timestamp: "1h ago",
           initialText: "...",
           redFlags: ["hello", "answer me", "childish", "grow up", "talk", ...universalRedFlags],
           greenFlags: ["space", "here", "ready", "love you", "checking in", ...universalGreenFlags],
-          translation: "She's too hurt to talk. She needs space, but she's watching if you stay steady.",
-          perfectResponse: "I notice you're quiet. I'll give you space, and I'm here when you're ready. I love you.",
-          tips: "Don't chase or punish. Stay calm and present.",
-          followUp: { green: "I just need time.", yellow: "...", red: "Leave me alone." },
-          followUps: [
-            { green: "I just need time.", yellow: "...", red: "Leave me alone." },
-            { green: "Okay. Thank you for not chasing me. I'll be ready soon.", yellow: "...", red: "I said leave me alone. I'm serious." },
-            { green: "Okay. I'm ready. Can we talk now?", yellow: "Give me a little longer.", red: "Stop checking in. I'll come to you when I'm ready." }
-          ]
+          translation: "She’s too hurt to talk. She needs space, but she’s watching if you stay steady.",
+          perfectResponse: "I notice you’re quiet. I’ll give you space, and I’m here when you’re ready. I love you.",
+          tips: "Don’t chase or punish. Stay calm and present.",
+          followUp: { green: "I just need time.", yellow: "...", red: "Leave me alone." }
         },
         {
           id: 'intimacy', name: "Not Tonight", preview: "Can you stop touching...", timestamp: "10:30 PM",
-          initialText: "Can you stop touching me? I'm not in the mood and you're being pushy.",
+          initialText: "Can you stop touching me? I’m not in the mood and you’re being pushy.",
           redFlags: ["barely touched", "fine", "whatever", "never", "rejected", ...universalRedFlags],
           greenFlags: ["pressure", "space", "sorry", "respect", "tired", ...universalGreenFlags],
           translation: "She feels pressured. She needs her boundary respected and to feel valued.",
-          perfectResponse: "Got it. I'm sorry I pushed. I'll stop. I care about you—not just sex.",
-          tips: "Respect the 'no' quickly. No pouting, no guilt.",
-          followUp: { green: "Thank you for understanding.", yellow: "Just go to sleep.", red: "You always make it about you." },
-          followUps: [
-            { green: "Thank you for understanding.", yellow: "Just go to sleep.", red: "You always make it about you." },
-            { green: "I just need you to not make me feel guilty for not being in the mood.", yellow: "I just needed you to back off. That's all.", red: "And now you're sulking. Every single time." },
-            { green: "I do love you. I just needed tonight to be about rest.", yellow: "Okay. Good night.", red: "This is why I pull away." }
-          ]
+          perfectResponse: "Got it. I’m sorry I pushed. I’ll stop. I care about you—not just sex.",
+          tips: "Respect the ‘no’ quickly. No pouting, no guilt.",
+          followUp: { green: "Thank you for understanding.", yellow: "Just go to sleep.", red: "You always make it about you." }
         }
       ],
 
       girlfriend: [
         {
           id: 'gf_textback', name: "Text Back", preview: "Are you ignoring me?", timestamp: "Now",
-          initialText: "Are you ignoring me? You've been on your phone but you didn't respond to my text.",
+          initialText: "Are you ignoring me? You’ve been on your phone but you didn’t respond to my text.",
           redFlags: ["i was busy", "relax", "crazy", "overreacting", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "sorry", "i get it", "didn't mean", "forgot", ...universalGreenFlags],
           translation: "She feels insecure and wants reassurance that she matters to you.",
-          perfectResponse: "I hear you. That makes sense. I'm sorry—I should've replied. You matter to me.",
-          tips: "Don't debate the timeline. Reassure and reconnect.",
-          followUp: { green: "Okay… thank you. I just hate feeling stupid for caring.", yellow: "Just… please respond next time.", red: "Wow. So I'm not important. Got it." },
-          followUps: [
-            { green: "Okay… thank you. I just hate feeling stupid for caring.", yellow: "Just… please respond next time.", red: "Wow. So I'm not important. Got it." },
-            { green: "I know I can get in my head. I just need to know I'm not bothering you.", yellow: "I just need faster responses when you see it.", red: "If you cared, you wouldn't make me feel like this." },
-            { green: "Okay. I trust you. I just needed to hear it.", yellow: "Okay. Let's move on.", red: "I don't want to keep talking about this." }
-          ]
+          perfectResponse: "I hear you. That makes sense. I’m sorry—I should’ve replied. You matter to me.",
+          tips: "Don’t debate the timeline. Reassure and reconnect.",
+          followUp: { green: "Okay… thank you. I just hate feeling stupid for caring.", yellow: "Just… please respond next time.", red: "Wow. So I’m not important. Got it." }
         },
         {
-          id: 'gf_plans', name: "Plans Changed", preview: "So we're not going out?", timestamp: "2h ago",
-          initialText: "So we're not going out tonight? You always change plans last minute.",
+          id: 'gf_plans', name: "Plans Changed", preview: "So we’re not going out?", timestamp: "2h ago",
+          initialText: "So we’re not going out tonight? You always change plans last minute.",
           redFlags: ["always", "never", "not my fault", "work", "whatever", ...universalRedFlags],
           greenFlags: ["disappointed", "i get it", "that sucks", "sorry", "makes sense", ...universalGreenFlags],
           translation: "She feels disappointed and unchosen. She needs consistency and care.",
-          perfectResponse: "I get why that feels disappointing. I'm sorry for the last-minute change. I want to make it right—can we pick a solid plan together?",
+          perfectResponse: "I get why that feels disappointing. I’m sorry for the last-minute change. I want to make it right—can we pick a solid plan together?",
           tips: "Name the disappointment first. Then offer a next step.",
-          followUp: { green: "Okay. I just want to feel like I matter.", yellow: "Fine. Just pick something.", red: "You always do this. I'm done trying." },
-          followUps: [
-            { green: "Okay. I just want to feel like I matter.", yellow: "Fine. Just pick something.", red: "You always do this. I'm done trying." },
-            { green: "It's not just tonight. It's the pattern. I need you to be more reliable.", yellow: "Fine. What are we actually doing?", red: "I don't know why I even bother making plans." },
-            { green: "Okay. I believe you. Let's just make it good.", yellow: "Okay. But this is the last time.", red: "I'm serious. This has to stop." }
-          ]
+          followUp: { green: "Okay. I just want to feel like I matter.", yellow: "Fine. Just pick something.", red: "You always do this. I’m done trying." }
         },
         {
           id: 'gf_ex', name: "Social Media Trigger", preview: "Why did you like her post?", timestamp: "Yesterday",
-          initialText: "Why did you like her post? That's your ex. It feels weird.",
+          initialText: "Why did you like her post? That’s your ex. It feels weird.",
           redFlags: ["you're insecure", "jealous", "calm down", "not a big deal", ...universalRedFlags],
           greenFlags: ["i hear you", "i get it", "that makes sense", "sorry", "reassure", ...universalGreenFlags],
           translation: "She feels threatened and wants clarity and reassurance.",
-          perfectResponse: "I hear you. That makes sense it would feel weird. I'm with you, and I'll be more thoughtful about that.",
-          tips: "This isn't about the 'like.' It's about safety.",
-          followUp: { green: "Thank you. I just need to know I'm not competing.", yellow: "Okay. Please just be mindful.", red: "You're acting single. It's embarrassing." },
-          followUps: [
-            { green: "Thank you. I just need to know I'm not competing.", yellow: "Okay. Please just be mindful.", red: "You're acting single. It's embarrassing." },
-            { green: "It's not about trust. It's about what it looks like. I need to feel chosen.", yellow: "I appreciate you hearing me. Just be thoughtful.", red: "It makes me feel disrespected and I can't just ignore that." },
-            { green: "Okay. I feel better. Thank you.", yellow: "Okay. Let's drop it.", red: "I need to think about this." }
-          ]
+          perfectResponse: "I hear you. That makes sense it would feel weird. I’m with you, and I’ll be more thoughtful about that.",
+          tips: "This isn’t about the ‘like.’ It’s about safety.",
+          followUp: { green: "Thank you. I just need to know I’m not competing.", yellow: "Okay. Please just be mindful.", red: "You’re acting single. It’s embarrassing." }
         },
         {
-          id: 'gf_commit', name: "Where Is This Going?", preview: "I don't know where we stand...", timestamp: "Friday",
-          initialText: "I don't know where we stand. I feel like I care more than you do.",
+          id: 'gf_commit', name: "Where Is This Going?", preview: "I don’t know where we stand...", timestamp: "Friday",
+          initialText: "I don’t know where we stand. I feel like I care more than you do.",
           redFlags: ["pressure", "too much", "crazy", "relax", "always", "never", ...universalRedFlags],
           greenFlags: ["i hear you", "that hurts", "i care", "i want", "reconnect", ...universalGreenFlags],
           translation: "She feels uncertain and wants reassurance and direction.",
           perfectResponse: "I hear you. That would hurt. I do care about you, and I want to be clear and steady with you. Can we talk tonight?",
-          tips: "Don't dodge. Give warmth + a clear next step.",
-          followUp: { green: "Yes. That's all I've been asking for.", yellow: "Okay. We need to talk.", red: "If you cared, I wouldn't have to beg." },
-          followUps: [
-            { green: "Yes. That's all I've been asking for.", yellow: "Okay. We need to talk.", red: "If you cared, I wouldn't have to beg." },
-            { green: "I don't need it to be perfect. I just need it to be clear.", yellow: "Okay. Tonight. Can we actually do that?", red: "I feel like I'm the only one who wants this to work." },
-            { green: "Okay. I feel better. I'm in.", yellow: "Alright. Tonight.", red: "I need you to show me, not just tell me." }
-          ]
+          tips: "Don’t dodge. Give warmth + a clear next step.",
+          followUp: { green: "Yes. That’s all I’ve been asking for.", yellow: "Okay. We need to talk.", red: "If you cared, I wouldn’t have to beg." }
         },
         {
           id: 'gf_affection', name: "Affection Drop", preview: "You never touch me...", timestamp: "Now",
-          initialText: "You never hold my hand anymore. I feel like you're not into me.",
+          initialText: "You never hold my hand anymore. I feel like you’re not into me.",
           redFlags: ["tired", "busy", "sex", "pressure", "whatever", ...universalRedFlags],
           greenFlags: ["miss you", "i hear you", "that hurts", "reconnect", "sorry", ...universalGreenFlags],
           translation: "She feels unwanted and needs closeness and reassurance.",
           perfectResponse: "I hear you. That would hurt. I am into you—I want to be more intentional about showing you that.",
           tips: "Start with the feeling, not the excuse.",
-          followUp: { green: "Okay… that helps. I just miss us.", yellow: "I just want effort.", red: "It doesn't feel like it." },
-          followUps: [
-            { green: "Okay… that helps. I just miss us.", yellow: "I just want effort.", red: "It doesn't feel like it." },
-            { green: "I don't need grand gestures. I just need to feel like you want me.", yellow: "Show me. Don't just say it.", red: "I'm starting to wonder if you even notice anymore." },
-            { green: "Okay. That's all I needed. Thank you.", yellow: "Okay. I hope so.", red: "I need more than promises right now." }
-          ]
+          followUp: { green: "Okay… that helps. I just miss us.", yellow: "I just want effort.", red: "It doesn’t feel like it." }
         },
         {
           id: 'gf_tone', name: "Tone", preview: "You sounded harsh...", timestamp: "Last Night",
@@ -844,200 +1011,135 @@
           redFlags: ["what tone", "sensitive", "you started", ...universalRedFlags],
           greenFlags: ["sorry", "you're right", "i hear you", "try again", ...universalGreenFlags],
           translation: "She feels hurt and needs emotional safety.",
-          perfectResponse: "You're right. That landed harsh. I'm sorry. Let me slow down and say it differently.",
+          perfectResponse: "You’re right. That landed harsh. I’m sorry. Let me slow down and say it differently.",
           tips: "Own impact. Repair fast.",
-          followUp: { green: "Thank you. That means a lot.", yellow: "Okay… just watch it.", red: "You always do this." },
-          followUps: [
-            { green: "Thank you. That means a lot.", yellow: "Okay… just watch it.", red: "You always do this." },
-            { green: "I know you don't mean to. It just hits hard.", yellow: "I just need you to slow down before you speak.", red: "It makes me go quiet and I hate that." },
-            { green: "Okay. I feel better. I just needed you to see it.", yellow: "Okay. Let's move forward.", red: "I need space to process this." }
-          ]
+          followUp: { green: "Thank you. That means a lot.", yellow: "Okay… just watch it.", red: "You always do this." }
         },
         {
           id: 'gf_space', name: "Needing Space", preview: "I need a minute...", timestamp: "2h ago",
           initialText: "I need a minute. Please stop pushing me right now.",
           redFlags: ["talk now", "what's wrong", "not fine", "lying", ...universalRedFlags],
           greenFlags: ["okay", "space", "here when", "ready", ...universalGreenFlags],
-          translation: "She's flooded and needs space without feeling abandoned.",
-          perfectResponse: "Okay. I'll give you space. I'm here when you're ready, and I care about you.",
+          translation: "She’s flooded and needs space without feeling abandoned.",
+          perfectResponse: "Okay. I’ll give you space. I’m here when you’re ready, and I care about you.",
           tips: "Space + connection = safety.",
-          followUp: { green: "Thanks. I'll come back when I'm calm.", yellow: "Okay.", red: "You never listen." },
-          followUps: [
-            { green: "Thanks. I'll come back when I'm calm.", yellow: "Okay.", red: "You never listen." },
-            { green: "I'm almost ready. Thank you for not pushing.", yellow: "I just need ten more minutes.", red: "Every time I ask for space you make it a problem." },
-            { green: "Okay. I'm ready. Can we talk?", yellow: "Give me a bit longer.", red: "I'll reach out when I'm ready. Please stop." }
-          ]
+          followUp: { green: "Thanks. I’ll come back when I’m calm.", yellow: "Okay.", red: "You never listen." }
         },
         {
-          id: 'gf_intro', name: "Not Introduced", preview: "You didn't introduce me...", timestamp: "Sunday",
-          initialText: "You didn't even introduce me at that party. I felt invisible.",
+          id: 'gf_intro', name: "Not Introduced", preview: "You didn’t introduce me...", timestamp: "Sunday",
+          initialText: "You didn’t even introduce me at that party. I felt invisible.",
           redFlags: ["not a big deal", "relax", "sensitive", ...universalRedFlags],
           greenFlags: ["invisible", "sorry", "i hear you", "that sucks", ...universalGreenFlags],
           translation: "She felt unchosen and embarrassed. She needs reassurance and repair.",
-          perfectResponse: "I hear you. That would feel awful. I'm sorry—I should've made it clear you're with me.",
+          perfectResponse: "I hear you. That would feel awful. I’m sorry—I should’ve made it clear you’re with me.",
           tips: "Public moments hit deep. Repair it directly.",
-          followUp: { green: "Thank you. I just needed you to have my back.", yellow: "It just hurt.", red: "It's like you're ashamed of me." },
-          followUps: [
-            { green: "Thank you. I just needed you to have my back.", yellow: "It just hurt.", red: "It's like you're ashamed of me." },
-            { green: "I know it was an accident. I just need to know it won't happen again.", yellow: "I just want to feel visible when we're together.", red: "I spent the whole night feeling like a ghost." },
-            { green: "Okay. I believe you. I love you.", yellow: "Okay. Just be more intentional.", red: "I'm not trying to fight. I just needed you to see it." }
-          ]
+          followUp: { green: "Thank you. I just needed you to have my back.", yellow: "It just hurt.", red: "It’s like you’re ashamed of me." }
         }
       ],
 
       family: [
         {
           id: 'fam_nevercall', name: "You Never Call", preview: "Do you even care?", timestamp: "Now",
-          initialText: "Do you even care about this family? You never call. You're always too busy for us.",
+          initialText: "Do you even care about this family? You never call. You’re always too busy for us.",
           redFlags: ["always", "never", "dramatic", "i'm busy", "stop", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "sorry", "miss you", "care", ...universalGreenFlags],
           translation: "They feel disconnected and want closeness and consistency.",
-          perfectResponse: "I hear you. It makes sense you'd feel hurt. I do care, and I want to be more consistent—can we pick a time to talk this week?",
+          perfectResponse: "I hear you. It makes sense you’d feel hurt. I do care, and I want to be more consistent—can we pick a time to talk this week?",
           tips: "Family pain is usually about connection, not schedules.",
-          followUp: { green: "Okay. I just miss you.", yellow: "Fine. Just actually follow through.", red: "You always say that." },
-          followUps: [
-            { green: "Okay. I just miss you.", yellow: "Fine. Just actually follow through.", red: "You always say that." },
-            { green: "I know you're busy. I just don't want us to lose touch.", yellow: "Pick a day and stick to it. That's all I'm asking.", red: "We go weeks without talking and you act like nothing's wrong." },
-            { green: "Okay. I'm glad we talked. Let's actually do this.", yellow: "Okay. Saturday. I'm holding you to it.", red: "I'll believe it when I see it." }
-          ]
+          followUp: { green: "Okay. I just miss you.", yellow: "Fine. Just actually follow through.", red: "You always say that." }
         },
         {
           id: 'fam_holiday', name: "Holiday Pressure", preview: "Are you coming or not?", timestamp: "Yesterday",
-          initialText: "Are you coming for the holiday or not? Mom is upset and it's making everything stressful.",
+          initialText: "Are you coming for the holiday or not? Mom is upset and it’s making everything stressful.",
           redFlags: ["not my problem", "calm down", "drama", "whatever", ...universalRedFlags],
           greenFlags: ["stressful", "i get it", "makes sense", "sorry", "plan", ...universalGreenFlags],
           translation: "They feel pressured and anxious. They want clarity and relief.",
-          perfectResponse: "I hear you. That sounds stressful. I don't want this dragging out—let me give you a clear answer by tonight.",
+          perfectResponse: "I hear you. That sounds stressful. I don’t want this dragging out—let me give you a clear answer by tonight.",
           tips: "Clarity calms family systems fast.",
-          followUp: { green: "Thank you. That helps.", yellow: "Okay. Please don't drag it out.", red: "You're making this worse." },
-          followUps: [
-            { green: "Thank you. That helps.", yellow: "Okay. Please don't drag it out.", red: "You're making this worse." },
-            { green: "Mom just needs to know there's a plan. That's what's stressing her.", yellow: "Okay. Just let me know by tonight.", red: "She's calling me every hour and I don't know what to tell her." },
-            { green: "Okay. I'll let her know. Thank you.", yellow: "Okay. Tonight.", red: "Just figure it out. I can't be in the middle anymore." }
-          ]
+          followUp: { green: "Thank you. That helps.", yellow: "Okay. Please don’t drag it out.", red: "You’re making this worse." }
         },
         {
-          id: 'fam_critic', name: "Criticism", preview: "You think you're better than us...", timestamp: "Friday",
-          initialText: "You think you're better than us now. You show up and act like you've got it all figured out.",
+          id: 'fam_critic', name: "Criticism", preview: "You think you’re better than us...", timestamp: "Friday",
+          initialText: "You think you’re better than us now. You show up and act like you’ve got it all figured out.",
           redFlags: ["you're wrong", "that's not true", "crazy", "always", ...universalRedFlags],
           greenFlags: ["sounds like", "hurt", "i hear you", "didn't mean", "sorry", ...universalGreenFlags],
           translation: "They feel insecure and judged. They want respect and connection.",
-          perfectResponse: "I hear you. It sounds like I've been coming across cold or judging, and that hurts. I don't want that between us.",
-          tips: "Don't 'correct' their perception. Own the impact.",
-          followUp: { green: "Yeah… I just want us to be good.", yellow: "Okay. Just… don't act like that.", red: "There it is. You're doing it again." },
-          followUps: [
-            { green: "Yeah… I just want us to be good.", yellow: "Okay. Just… don't act like that.", red: "There it is. You're doing it again." },
-            { green: "I just don't want to feel judged by my own family.", yellow: "I just need you to be around, not above.", red: "You don't even hear how you come across." },
-            { green: "Okay. That's all I needed. Thank you for hearing me.", yellow: "Okay. Let's just move forward.", red: "I need some space from this right now." }
-          ]
+          perfectResponse: "I hear you. It sounds like I’ve been coming across cold or judging, and that hurts. I don’t want that between us.",
+          tips: "Don’t ‘correct’ their perception. Own the impact.",
+          followUp: { green: "Yeah… I just want us to be good.", yellow: "Okay. Just… don’t act like that.", red: "There it is. You’re doing it again." }
         },
         {
           id: 'fam_money', name: "Money Ask", preview: "Can you help me out?", timestamp: "2h ago",
-          initialText: "Can you help me out with some money? I'm stressed and I don't know what else to do.",
+          initialText: "Can you help me out with some money? I’m stressed and I don’t know what else to do.",
           redFlags: ["not my problem", "you always", "never", "stupid", ...universalRedFlags],
           greenFlags: ["stressed", "hard", "i hear you", "let's figure out", "plan", ...universalGreenFlags],
           translation: "They feel overwhelmed and embarrassed. They need support and a plan.",
-          perfectResponse: "I hear you. That sounds really stressful. Let's talk through what you need and what I can realistically do.",
-          tips: "Support doesn't always mean 'yes.' It means steadiness + clarity.",
-          followUp: { green: "Thank you. I just needed someone steady.", yellow: "Okay. I just need help.", red: "Wow. Forget it." },
-          followUps: [
-            { green: "Thank you. I just needed someone steady.", yellow: "Okay. I just need help.", red: "Wow. Forget it." },
-            { green: "I'm not asking for a handout. I just need someone in my corner.", yellow: "Can we at least figure out what's realistic?", red: "I knew I shouldn't have said anything." },
-            { green: "Okay. That means more than you know.", yellow: "Okay. Let's figure it out.", red: "I'll handle it myself. I always do." }
-          ]
+          perfectResponse: "I hear you. That sounds really stressful. Let’s talk through what you need and what I can realistically do.",
+          tips: "Support doesn’t always mean ‘yes.’ It means steadiness + clarity.",
+          followUp: { green: "Thank you. I just needed someone steady.", yellow: "Okay. I just need help.", red: "Wow. Forget it." }
         },
         {
-          id: 'fam_parenting', name: "Parenting Advice", preview: "You're spoiling the kids...", timestamp: "Sunday",
-          initialText: "You're spoiling the kids. In my day, we didn't do all this gentle stuff.",
+          id: 'fam_parenting', name: "Parenting Advice", preview: "You’re spoiling the kids...", timestamp: "Sunday",
+          initialText: "You’re spoiling the kids. In my day, we didn’t do all this gentle stuff.",
           redFlags: ["shut up", "stupid", "you don't know", "always", ...universalRedFlags],
           greenFlags: ["i hear you", "i get it", "makes sense", "respect", "talk", ...universalGreenFlags],
           translation: "They feel threatened by change and want to feel respected.",
-          perfectResponse: "I hear you. I know you care about the kids. I'd like to talk about it calmly—what worries you most?",
+          perfectResponse: "I hear you. I know you care about the kids. I’d like to talk about it calmly—what worries you most?",
           tips: "Respect first. Then boundaries.",
-          followUp: { green: "I just don't want them to be soft.", yellow: "Just think about what I said.", red: "You never listen to elders." },
-          followUps: [
-            { green: "I just don't want them to be soft.", yellow: "Just think about what I said.", red: "You never listen to elders." },
-            { green: "I raised you with structure and you turned out fine. I just want the same for them.", yellow: "I'm just saying there's a balance.", red: "These kids are going to walk all over you." },
-            { green: "Okay. I appreciate you caring. Let's keep talking.", yellow: "Okay. I'll think about it.", red: "One day you'll see I was right." }
-          ]
+          followUp: { green: "I just don’t want them to be soft.", yellow: "Just think about what I said.", red: "You never listen to elders." }
         },
         {
-          id: 'fam_groupchat', name: "Family Group Chat", preview: "Don't start drama...", timestamp: "Now",
-          initialText: "Can you not start drama in the group chat? It's exhausting.",
+          id: 'fam_groupchat', name: "Family Group Chat", preview: "Don’t start drama...", timestamp: "Now",
+          initialText: "Can you not start drama in the group chat? It’s exhausting.",
           redFlags: ["whatever", "you started", "crazy", "always", ...universalRedFlags],
           greenFlags: ["exhausting", "i hear you", "sorry", "my bad", "calm", ...universalGreenFlags],
           translation: "They feel overwhelmed and want peace and respect.",
-          perfectResponse: "I hear you. I don't want to add stress. I'll cool it and handle it one-on-one instead.",
+          perfectResponse: "I hear you. I don’t want to add stress. I’ll cool it and handle it one-on-one instead.",
           tips: "Public conflict makes family systems explode.",
-          followUp: { green: "Thank you. That's all I wanted.", yellow: "Okay. Please do.", red: "Sure. We'll see." },
-          followUps: [
-            { green: "Thank you. That's all I wanted.", yellow: "Okay. Please do.", red: "Sure. We'll see." },
-            { green: "The group chat is stressful enough without adding drama.", yellow: "Just keep it civil. That's all I'm asking.", red: "You always say that and then nothing changes." },
-            { green: "Okay. I appreciate it. Let's just keep the peace.", yellow: "Okay. We'll see how it goes.", red: "I'll believe it when I see it." }
-          ]
+          followUp: { green: "Thank you. That’s all I wanted.", yellow: "Okay. Please do.", red: "Sure. We’ll see." }
         },
         {
-          id: 'fam_boundary', name: "Boundary Push", preview: "Why won't you tell me?", timestamp: "Last Night",
-          initialText: "Why won't you tell me what's going on? You're shutting me out.",
+          id: 'fam_boundary', name: "Boundary Push", preview: "Why won’t you tell me?", timestamp: "Last Night",
+          initialText: "Why won’t you tell me what’s going on? You’re shutting me out.",
           redFlags: ["none of your business", "leave me alone", "stop", ...universalRedFlags],
           greenFlags: ["i hear you", "care", "i'm not ready", "space", ...universalGreenFlags],
           translation: "They feel worried and want closeness, but you need boundaries.",
-          perfectResponse: "I hear you. I'm not trying to shut you out. I'm just not ready to share details yet—when I am, I will.",
+          perfectResponse: "I hear you. I’m not trying to shut you out. I’m just not ready to share details yet—when I am, I will.",
           tips: "Warm boundary = connection + limit.",
-          followUp: { green: "Okay. I can respect that.", yellow: "Fine. Just… don't disappear.", red: "So you don't trust me." },
-          followUps: [
-            { green: "Okay. I can respect that.", yellow: "Fine. Just… don't disappear.", red: "So you don't trust me." },
-            { green: "I'm not trying to pry. I just care and I didn't know how to show it.", yellow: "Okay. I'll give you space. Just check in when you can.", red: "Shutting people out isn't healthy." },
-            { green: "Okay. I trust you. I'm here when you need me.", yellow: "Okay. Just don't go quiet too long.", red: "Fine. You know where I am." }
-          ]
+          followUp: { green: "Okay. I can respect that.", yellow: "Fine. Just… don’t disappear.", red: "So you don’t trust me." }
         },
         {
           id: 'fam_sibling', name: "Sibling Comparison", preview: "Must be nice...", timestamp: "Tuesday",
-          initialText: "Must be nice to have everything figured out. Some of us don't get it that easy.",
+          initialText: "Must be nice to have everything figured out. Some of us don’t get it that easy.",
           redFlags: ["not true", "you're jealous", "always", "never", ...universalRedFlags],
           greenFlags: ["sounds like", "hard", "i hear you", "stress", ...universalGreenFlags],
           translation: "They feel behind and ashamed. They want empathy, not correction.",
-          perfectResponse: "I hear you. It sounds like you're carrying a lot. I don't want you feeling alone in that.",
-          tips: "Don't 'defend your resume.' Just be human.",
-          followUp: { green: "Thanks. That actually helps.", yellow: "Yeah. It's been rough.", red: "Whatever. You don't get it." },
-          followUps: [
-            { green: "Thanks. That actually helps.", yellow: "Yeah. It's been rough.", red: "Whatever. You don't get it." },
-            { green: "It's just hard when it feels like everyone else has it figured out.", yellow: "I'm just tired.", red: "You don't know what it's like to be me." },
-            { green: "Okay. I appreciate you actually listening.", yellow: "Yeah. Okay. Thanks.", red: "I'll figure it out. I always do." }
-          ]
+          perfectResponse: "I hear you. It sounds like you’re carrying a lot. I don’t want you feeling alone in that.",
+          tips: "Don’t ‘defend your resume.’ Just be human.",
+          followUp: { green: "Thanks. That actually helps.", yellow: "Yeah. It’s been rough.", red: "Whatever. You don’t get it." }
         }
       ],
 
       coworker: [
         {
           id: 'co_deadline', name: "Late Deliverable", preview: "Where is that file?", timestamp: "Now",
-          initialText: "Hey—where is that file? I needed it this morning and I haven't heard back.",
+          initialText: "Hey—where is that file? I needed it this morning and I haven’t heard back.",
           redFlags: ["relax", "calm down", "not my job", "whatever", "stop", ...universalRedFlags],
           greenFlags: ["i hear you", "sorry", "my bad", "on it", "thanks", "understand", "makes sense", ...universalGreenFlags],
           translation: "They feel blocked and stressed. They need clarity and a plan.",
           perfectResponse: "I hear you. Sorry for the delay. I can send it by 2 PM—does that work, or do you need a smaller piece sooner?",
           tips: "Work repair = ownership + timeline + options.",
-          followUp: { green: "Thanks. 2 PM works.", yellow: "Please send whatever you have ASAP.", red: "This is becoming a pattern." },
-          followUps: [
-            { green: "Thanks. 2 PM works.", yellow: "Please send whatever you have ASAP.", red: "This is becoming a pattern." },
-            { green: "Appreciate it. Just flag me if anything shifts.", yellow: "Okay. I need the full version no later than 3.", red: "I need you to understand this holds up the whole team." },
-            { green: "Got it. Let's stay aligned going forward.", yellow: "Okay. Don't miss it again.", red: "We need to have a bigger conversation about reliability." }
-          ]
+          followUp: { green: "Thanks. 2 PM works.", yellow: "Please send whatever you have ASAP.", red: "This is becoming a pattern." }
         },
         {
           id: 'co_tone', name: "Tone in Email", preview: "That came off rude...", timestamp: "Yesterday",
-          initialText: "Your email came off pretty rude. I'm not trying to fight, but it didn't feel great to read.",
+          initialText: "Your email came off pretty rude. I’m not trying to fight, but it didn’t feel great to read.",
           redFlags: ["what tone", "you're sensitive", "not true", ...universalRedFlags],
           greenFlags: ["you're right", "sorry", "my bad", "i hear you", "try again", ...universalGreenFlags],
           translation: "They feel disrespected and want professionalism and safety.",
-          perfectResponse: "Thanks for telling me. I can see how it landed that way. I'm sorry—my intent was clarity, not disrespect.",
+          perfectResponse: "Thanks for telling me. I can see how it landed that way. I’m sorry—my intent was clarity, not disrespect.",
           tips: "Work conflict: thank + own impact + reset.",
-          followUp: { green: "I appreciate that.", yellow: "Okay. Just be mindful.", red: "It's not the first time." },
-          followUps: [
-            { green: "I appreciate that.", yellow: "Okay. Just be mindful.", red: "It's not the first time." },
-            { green: "It matters to me that we can communicate well. I think we can.", yellow: "I just need communication to feel safer between us.", red: "I'm starting to not want to bring things up because of how it lands." },
-            { green: "Good. I think we're good. Let's move on.", yellow: "Okay. Let's just keep it professional.", red: "I may need to loop in a manager if this keeps up." }
-          ]
+          followUp: { green: "I appreciate that.", yellow: "Okay. Just be mindful.", red: "It’s not the first time." }
         },
         {
           id: 'co_credit', name: "Credit Taken", preview: "Why did you present that?", timestamp: "Friday",
@@ -1045,89 +1147,59 @@
           redFlags: ["calm down", "not a big deal", "you're wrong", "always", ...universalRedFlags],
           greenFlags: ["i hear you", "sorry", "credit", "my bad", "respect", ...universalGreenFlags],
           translation: "They feel disrespected. They need acknowledgment and repair.",
-          perfectResponse: "I hear you. You're right to be upset. I should've given you clear credit. I'm sorry—how do you want me to fix it?",
+          perfectResponse: "I hear you. You’re right to be upset. I should’ve given you clear credit. I’m sorry—how do you want me to fix it?",
           tips: "Name the wrong. Offer repair.",
-          followUp: { green: "Thank you. Please clarify it with the team.", yellow: "Just… don't do it again.", red: "This makes me not trust you." },
-          followUps: [
-            { green: "Thank you. Please clarify it with the team.", yellow: "Just… don't do it again.", red: "This makes me not trust you." },
-            { green: "I know it wasn't malicious. I just need to know my work is protected.", yellow: "If you can send a quick message to the team, that would help.", red: "This is something I'll have to bring up in our next check-in." },
-            { green: "Okay. I appreciate you making it right.", yellow: "Okay. Let's just move forward.", red: "I need a day or two before I can trust collaborating fully again." }
-          ]
+          followUp: { green: "Thank you. Please clarify it with the team.", yellow: "Just… don’t do it again.", red: "This makes me not trust you." }
         },
         {
           id: 'co_slack', name: "No Response", preview: "Can you respond please?", timestamp: "2h ago",
-          initialText: "Can you respond please? I've pinged you twice and I'm blocked.",
+          initialText: "Can you respond please? I’ve pinged you twice and I’m blocked.",
           redFlags: ["stop", "annoying", "relax", "whatever", ...universalRedFlags],
           greenFlags: ["sorry", "i hear you", "blocked", "on it", "thanks", ...universalGreenFlags],
           translation: "They feel stuck and ignored. They need a quick update.",
-          perfectResponse: "I hear you. Sorry for the delay. I'm on it now—give me 20 minutes and I'll send an update.",
+          perfectResponse: "I hear you. Sorry for the delay. I’m on it now—give me 20 minutes and I’ll send an update.",
           tips: "A short update prevents escalation.",
-          followUp: { green: "Thanks. Appreciate it.", yellow: "Okay. Please just update me.", red: "This is really frustrating." },
-          followUps: [
-            { green: "Thanks. Appreciate it.", yellow: "Okay. Please just update me.", red: "This is really frustrating." },
-            { green: "Even just a quick Slack message makes a huge difference.", yellow: "I just need to not feel left in the dark.", red: "I can't keep getting blocked because of lack of communication." },
-            { green: "Good. Let's keep it moving.", yellow: "Okay. Going forward, just keep me in the loop.", red: "I may need to escalate this if it keeps happening." }
-          ]
+          followUp: { green: "Thanks. Appreciate it.", yellow: "Okay. Please just update me.", red: "This is really frustrating." }
         },
         {
-          id: 'co_quality', name: "Not Good Enough", preview: "This isn't ready...", timestamp: "Last Night",
-          initialText: "This isn't ready. I can't send this to leadership like this.",
+          id: 'co_quality', name: "Not Good Enough", preview: "This isn’t ready...", timestamp: "Last Night",
+          initialText: "This isn’t ready. I can’t send this to leadership like this.",
           redFlags: ["whatever", "you're picky", "not my fault", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "fix", "revise", "sorry", ...universalGreenFlags],
-          translation: "They're worried about outcomes and want quality and confidence.",
-          perfectResponse: "Got it. I hear you. What are the top 2 changes you need so it's sendable? I'll prioritize those first.",
+          translation: "They’re worried about outcomes and want quality and confidence.",
+          perfectResponse: "Got it. I hear you. What are the top 2 changes you need so it’s sendable? I’ll prioritize those first.",
           tips: "Ask for clarity instead of getting defensive.",
-          followUp: { green: "Yes. Thank you. Here are the two fixes.", yellow: "We need multiple fixes. Let's talk.", red: "This is basic stuff." },
-          followUps: [
-            { green: "Yes. Thank you. Here are the two fixes.", yellow: "We need multiple fixes. Let's talk.", red: "This is basic stuff." },
-            { green: "Appreciate the quick response. Let's get this done.", yellow: "Can we jump on a quick call?", red: "I don't have time to be hand-holding on this." },
-            { green: "This is looking better. Good work.", yellow: "Okay. That's closer. Let's finalize.", red: "This needs to be right the first time." }
-          ]
+          followUp: { green: "Yes. Thank you. Here are the two fixes.", yellow: "We need multiple fixes. Let’s talk.", red: "This is basic stuff." }
         },
         {
-          id: 'co_meeting', name: "Missed Meeting", preview: "You weren't there...", timestamp: "Tuesday",
-          initialText: "You weren't at the meeting and we needed your input. It put us behind.",
+          id: 'co_meeting', name: "Missed Meeting", preview: "You weren’t there...", timestamp: "Tuesday",
+          initialText: "You weren’t at the meeting and we needed your input. It put us behind.",
           redFlags: ["not my fault", "i was busy", "whatever", ...universalRedFlags],
           greenFlags: ["sorry", "my bad", "i hear you", "behind", "fix", ...universalGreenFlags],
           translation: "They feel stressed and want reliability.",
-          perfectResponse: "You're right. That put you behind. I'm sorry. What's the fastest way I can get caught up and unblock the next step?",
+          perfectResponse: "You’re right. That put you behind. I’m sorry. What’s the fastest way I can get caught up and unblock the next step?",
           tips: "Own it. Then solve.",
-          followUp: { green: "Thanks. Here's what we need.", yellow: "We'll need to redo a piece.", red: "This keeps happening." },
-          followUps: [
-            { green: "Thanks. Here's what we need.", yellow: "We'll need to redo a piece.", red: "This keeps happening." },
-            { green: "I appreciate you jumping on this fast.", yellow: "Here's what needs to be redone — let's do it quickly.", red: "This is a recurring issue I'm going to have to document." },
-            { green: "Good. We're back on track. Let's stay aligned.", yellow: "Okay. Let's get it done today.", red: "I need this to not happen again." }
-          ]
+          followUp: { green: "Thanks. Here’s what we need.", yellow: "We’ll need to redo a piece.", red: "This keeps happening." }
         },
         {
-          id: 'co_boundary', name: "Task Dump", preview: "I can't do your part too...", timestamp: "Now",
-          initialText: "I can't keep doing your part too. It's too much.",
+          id: 'co_boundary', name: "Task Dump", preview: "I can’t do your part too...", timestamp: "Now",
+          initialText: "I can’t keep doing your part too. It’s too much.",
           redFlags: ["always", "never", "relax", "not my problem", ...universalRedFlags],
           greenFlags: ["i hear you", "too much", "sorry", "plan", "fair", ...universalGreenFlags],
           translation: "They feel overwhelmed and resentful. They need fairness and boundaries.",
-          perfectResponse: "I hear you. That's not fair to you. Let's get clear on what's yours vs mine so you're not carrying extra.",
+          perfectResponse: "I hear you. That’s not fair to you. Let’s get clear on what’s yours vs mine so you’re not carrying extra.",
           tips: "Validate workload pain first, then clarify roles.",
-          followUp: { green: "Thank you. That's exactly it.", yellow: "Okay. We need to clarify it.", red: "You always do this." },
-          followUps: [
-            { green: "Thank you. That's exactly it.", yellow: "Okay. We need to clarify it.", red: "You always do this." },
-            { green: "I just need a clearer split so I'm not carrying both sides.", yellow: "Can we put it in writing so there's no confusion?", red: "This is affecting my ability to do my own job." },
-            { green: "Good. Thank you for being willing to sort this out.", yellow: "Okay. Let's set that up this week.", red: "I'm going to bring this to our manager if we can't figure it out." }
-          ]
+          followUp: { green: "Thank you. That’s exactly it.", yellow: "Okay. We need to clarify it.", red: "You always do this." }
         },
         {
           id: 'co_feedback', name: "Direct Feedback", preview: "We need to talk...", timestamp: "Friday",
-          initialText: "We need to talk. The way you handled that today wasn't okay.",
+          initialText: "We need to talk. The way you handled that today wasn’t okay.",
           redFlags: ["what did i do", "you're wrong", "calm down", ...universalRedFlags],
           greenFlags: ["i hear you", "sorry", "understand", "talk", "fix", ...universalGreenFlags],
           translation: "They feel concerned and want accountability and safety.",
-          perfectResponse: "I hear you. I'm open to feedback. What part felt not okay, so I can understand and fix it?",
+          perfectResponse: "I hear you. I’m open to feedback. What part felt not okay, so I can understand and fix it?",
           tips: "Curiosity first. Defense later (if ever).",
-          followUp: { green: "Thanks. Here's what happened.", yellow: "Okay. I'll explain.", red: "You're not taking this seriously." },
-          followUps: [
-            { green: "Thanks. Here's what happened.", yellow: "Okay. I'll explain.", red: "You're not taking this seriously." },
-            { green: "I appreciate you being open to hearing it. Here's my perspective.", yellow: "I need you to really understand what happened, not just move past it.", red: "I'm not going to drop this if it doesn't get addressed." },
-            { green: "Good. I think we're good. Let's move forward.", yellow: "Okay. Let's set some expectations going forward.", red: "I'm going to escalate this if nothing changes." }
-          ]
+          followUp: { green: "Thanks. Here’s what happened.", yellow: "Okay. I’ll explain.", red: "You’re not taking this seriously." }
         }
       ]
     };
@@ -1141,16 +1213,21 @@
     let overlayMode = "analysis"; // "analysis" | "decoder"
 
     // STRIKES + WIN STATE
-    let gradeHistory = [];
+    let gradeHistory = [];          // stores grades for attempts in current scenario
     let consecutiveReds = 0;
-    let overlayLocked = false;
-    let scenarioWon = false;
+    let overlayLocked = false;      // 3 strikes lock
+    let scenarioWon = false;        // win lock (prevents further sending)
+
+    // ✅ NEW: "pending win" (win triggers on Continue, not immediately)
+    let pendingWin = false;
+    let pendingWinPerfect = "";
 
     function resetProgressState() {
       gradeHistory = [];
       consecutiveReds = 0;
       scenarioWon = false;
-      overlayLocked = false;
+      pendingWin = false;
+      pendingWinPerfect = "";
     }
 
     function recalcConsecutiveReds() {
@@ -1174,52 +1251,70 @@
     function getWinClosingMessage() {
       if (practicePerson === 'coworker') return "Appreciate that. Thanks for handling it—this helps. 👍";
       if (practicePerson === 'family') return "Thanks. That helps. I appreciate you hearing me. ❤️";
+      // wife/girlfriend
       return "Thank you for hearing me. I feel better. ❤️";
     }
 
     function buildWinSummaryText() {
-      var last3 = gradeHistory.slice(-3);
-      var greens = last3.filter(function(g) { return g === 'green'; }).length;
-      var person = getPersonNoun();
+      const last3 = gradeHistory.slice(-3);
+      const greens = last3.filter(g => g === 'green').length;
 
-      var scoreLine = (greens === 3)
-        ? 'Three straight green replies. You stayed grounded the whole way through.'
-        : 'Two greens, one yellow, no reds. You held it together when it mattered.';
+      const person = getPersonNoun();
+      let scoreLine = (greens === 3)
+        ? "You stayed grounded for 3 straight replies."
+        : "You stayed grounded (2 greens + 1 yellow) without going red.";
 
-      var bullets;
+      let bullets = [
+        "You led with the emotion first.",
+        "You avoided defending the facts.",
+        "You moved toward connection with a calm next step."
+      ];
+
       if (practicePerson === 'coworker') {
         bullets = [
-          'You owned the impact without getting defensive.',
-          'You stayed professional when the pressure was on.',
-          'You moved toward a solution instead of away from the conflict.'
+          "You owned impact without drama.",
+          "You gave clarity and a next step.",
+          "You stayed professional and steady."
         ];
-      } else {
-        var opts = [
-          [
-            'You led with the feeling instead of the facts.',
-            "You didn't defend. You stayed in the conversation.",
-            'You moved toward connection when it was easier to shut down.'
-          ],
-          [
-            'You named what she was carrying before explaining yourself.',
-            'You stayed grounded when the pressure was on.',
-            'You gave her a reason to soften, not more to push back against.'
-          ],
-          [
-            'You went toward the fire instead of away from it.',
-            'You let her feel heard before anything else.',
-            'That is what a grounded man does in real conflict.'
-          ]
-        ];
-        bullets = opts[Math.floor(Math.random() * opts.length)];
       }
 
-      return scoreLine + '\n\nWhat you did well:\n' + '\u2022 ' + bullets[0] + '\n' + '\u2022 ' + bullets[1] + '\n' + '\u2022 ' + bullets[2] + '\n\nThis is how you build trust with a ' + person + '. That is grounded pursuit.';
+      return `${scoreLine}\n\nWhat you did well:\n• ${bullets[0]}\n• ${bullets[1]}\n• ${bullets[2]}\n\nThis is how you “win” trust with a ${person}.`;
     }
 
+    // ✅ Helper: check if user has won ALL scenarios in this category
+    function getAllScenarioIdsForPerson(person) {
+      const pool = scenarioPools[person] || [];
+      const ids = pool.map(s => s.id).filter(id => id && id !== 'custom');
+      return Array.from(new Set(ids));
+    }
+    function hasWonAllScenarios(person) {
+      const ids = getAllScenarioIdsForPerson(person);
+      if (!ids.length) return false;
+      const store = loadCompleted();
+      const done = store[person] || [];
+      return ids.every(id => done.includes(id));
+    }
+    function maybeShowAllWonModal(person) {
+      if (!hasWonAllScenarios(person)) return;
 
-    // ✅ Start app once
-    let gpAppStarted = false;
+      const shown = loadAllWonShown();
+      if (shown[person]) return;
+
+      shown[person] = true;
+      saveAllWonShown(shown);
+
+      setTimeout(() => openAllWonModal(person), 250);
+    }
+
+    function autoResizeComposerInput() {
+      const input = document.getElementById('message-input');
+      if (!input) return;
+      input.style.height = 'auto';
+      const maxHeight = 128;
+      input.style.height = `${Math.min(input.scrollHeight, maxHeight)}px`;
+    }
+
+    // ✅ Start app once (after auth succeeds)
     function startMainAppOnce() {
       if (gpAppStarted) return;
       gpAppStarted = true;
@@ -1227,6 +1322,8 @@
       initScenarios();
 
       const inputField = document.getElementById('message-input');
+      autoResizeComposerInput();
+      inputField.addEventListener('input', autoResizeComposerInput);
       inputField.addEventListener('focus', () => setTimeout(scrollToBottom, 300));
       inputField.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUserSend(); }
@@ -1235,7 +1332,7 @@
       showHelpIfFirstTime();
     }
 
-    // ONLOAD (OFFLINE BOOT)
+    // ONLOAD
     window.onload = function() {
       setPracticePersonUI(practicePerson);
       setPersonaUI(wifePersona);
@@ -1249,7 +1346,7 @@
     // SETTINGS: Practice With
     function setPracticePerson(p) {
       practicePerson = p;
-      localStorage.setItem('practice_person', p);
+      safeStorage.setItem('practice_person', p);
       setPracticePersonUI(p);
       updateContactUI();
       updateModeIndicator();
@@ -1278,7 +1375,7 @@
       listContainer.innerHTML = '';
 
       const pool = scenarioPools[practicePerson] || scenarioPools.wife;
-      const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, 6);
+      const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, 3);
 
       shuffled.forEach((scen, index) => {
         const el = document.createElement('div');
@@ -1308,7 +1405,7 @@
 
     function setPersona(p) {
       wifePersona = p;
-      localStorage.setItem('wife_persona', p);
+      safeStorage.setItem('wife_persona', p);
       setPersonaUI(p);
       updateModeIndicator();
     }
@@ -1316,8 +1413,6 @@
     function setPersonaUI(p) {
       const btnPursuer = document.getElementById('btn-pursuer');
       const btnWithdrawer = document.getElementById('btn-withdrawer');
-
-      if (!btnPursuer || !btnWithdrawer) return;
 
       if (p === 'pursuer') {
         btnPursuer.className = "py-3 text-sm font-bold rounded border bg-blue-100 border-blue-500 text-blue-700 transition-colors";
@@ -1332,26 +1427,283 @@
 
     function updateModeIndicator() {
       const el = document.getElementById('mode-indicator');
-      const person = (personConfig[practicePerson]?.label || "Wife ❤️").replace(/\s*[❤️💛👪💼]/g, '').trim();
+      const cfg = personConfig[practicePerson] || {};
+      const person = (cfg.label || "Wife ❤️").replace(/\s*[❤️💛💜👪💼]/g, '').trim();
       const persona = wifePersona.charAt(0).toUpperCase() + wifePersona.slice(1);
-      el.innerText = `Offline Mode (${person} • ${persona})`;
+      el.innerText = `AI Mode (${person} • ${persona})`;
       el.className = "text-blue-500 font-semibold text-xs";
     }
 
     // CUSTOM MODAL
     function openCustomScenarioModal() {
       updateCustomModalCopy();
+      setCustomStartBusy(false, "Start");
+      setCustomUploadStatus(customImageDataUrl ? `Screenshot ready: ${customImageName || "Selected image"}` : "No screenshot selected");
       document.getElementById('custom-modal').classList.remove('hidden');
       document.getElementById('custom-input').focus();
+    }
+
+    function closeCustomScenarioModal() {
+      document.getElementById('custom-modal').classList.add('hidden');
+    }
+
+    function setCustomUploadStatus(text, isError = false) {
+      const el = document.getElementById('custom-upload-status');
+      if (!el) return;
+      el.innerText = text || "";
+      el.className = isError ? "text-xs text-red-600 mb-3" : "text-xs text-gray-500 mb-3";
+    }
+
+    function setCustomStartBusy(busy, label = "Start") {
+      customScenarioBusy = !!busy;
+      const btn = document.getElementById('custom-start-btn');
+      if (!btn) return;
+      btn.disabled = !!busy;
+      btn.innerText = label;
+      btn.classList.toggle('opacity-60', !!busy);
+      btn.classList.toggle('cursor-not-allowed', !!busy);
+    }
+
+    function resetCustomImageSelection() {
+      customImageDataUrl = "";
+      customImageName = "";
+      const input = document.getElementById('custom-image-input');
+      if (input) input.value = "";
+      setCustomUploadStatus("No screenshot selected");
+    }
+
+    function triggerCustomImageUpload() {
+      if (customScenarioBusy) return;
+      const input = document.getElementById('custom-image-input');
+      if (input) input.click();
+    }
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Unable to read image file."));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function loadImageFromDataUrl(dataUrl) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("Invalid image."));
+        img.src = dataUrl;
+      });
+    }
+
+    function estimateBase64Bytes(base64) {
+      return Math.ceil((String(base64 || "").length * 3) / 4);
+    }
+
+    async function optimizeCustomImage(file) {
+      const rawDataUrl = await readFileAsDataUrl(file);
+      const rawBase64 = rawDataUrl.split(',')[1] || "";
+      if (estimateBase64Bytes(rawBase64) <= 1700000) return rawDataUrl;
+
+      const img = await loadImageFromDataUrl(rawDataUrl);
+      const maxEdge = 1600;
+      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error("Canvas not supported.");
+
+      ctx.drawImage(img, 0, 0, w, h);
+
+      let quality = 0.9;
+      let optimized = canvas.toDataURL('image/jpeg', quality);
+      while (estimateBase64Bytes(optimized.split(',')[1] || "") > 1700000 && quality > 0.55) {
+        quality -= 0.1;
+        optimized = canvas.toDataURL('image/jpeg', quality);
+      }
+      return optimized;
+    }
+
+    async function handleCustomImageSelect(event) {
+      const file = event && event.target && event.target.files ? event.target.files[0] : null;
+      if (!file) return;
+
+      if (!String(file.type || "").startsWith("image/")) {
+        resetCustomImageSelection();
+        setCustomUploadStatus("Please select an image file.", true);
+        return;
+      }
+
+      try {
+        setCustomUploadStatus("Optimizing screenshot...");
+        customImageDataUrl = await optimizeCustomImage(file);
+        customImageName = file.name || "screenshot";
+        setCustomUploadStatus(`Screenshot ready: ${customImageName}`);
+      } catch (e) {
+        console.warn("Image prep failed", e);
+        resetCustomImageSelection();
+        setCustomUploadStatus("Couldn’t process that screenshot. Try another image.", true);
+      }
+    }
+
+    async function handleCustomPasteImage(event) {
+      if (customScenarioBusy) return;
+
+      const clipboard = event && event.clipboardData;
+      if (!clipboard) return;
+
+      let file = null;
+      const items = clipboard.items ? Array.from(clipboard.items) : [];
+      for (const item of items) {
+        if (item && item.kind === 'file' && String(item.type || "").startsWith('image/')) {
+          file = item.getAsFile();
+          break;
+        }
+      }
+
+      if (!file && clipboard.files && clipboard.files.length) {
+        const first = clipboard.files[0];
+        if (String(first.type || "").startsWith('image/')) file = first;
+      }
+
+      if (!file) return;
+
+      event.preventDefault();
+      try {
+        setCustomUploadStatus("Processing pasted screenshot...");
+        customImageDataUrl = await optimizeCustomImage(file);
+        customImageName = "Pasted screenshot";
+        setCustomUploadStatus("Screenshot pasted and ready.");
+      } catch (e) {
+        console.warn("Pasted image prep failed", e);
+        resetCustomImageSelection();
+        setCustomUploadStatus("Couldn’t process pasted screenshot. Try upload instead.", true);
+      }
+    }
+
+    function parseDataUrlImage(dataUrl) {
+      const m = String(dataUrl || "").match(/^data:([^;]+);base64,(.+)$/);
+      if (!m) throw new Error("Invalid image data.");
+      return { mimeType: m[1], imageBase64: m[2] };
+    }
+
+    function inferOtherMessageFromInput(rawText) {
+      const lines = String(rawText || "").split('\n').map(s => s.trim()).filter(Boolean);
+      if (!lines.length) return "";
+
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        if (/^(me|my reply|my message|i said|you)\s*[:\-]/i.test(line)) continue;
+        if (/^(her|she|wife|girlfriend|partner|family|mom|dad|coworker|boss|them|they)\s*[:\-]/i.test(line)) {
+          return line.replace(/^[^:\-]+[:\-]\s*/, '').trim();
+        }
+        return line.replace(/^[^:\-]{1,20}[:\-]\s*/, '').trim();
+      }
+
+      return lines[lines.length - 1];
+    }
+
+    function buildInitialDecoderSummary(decoded) {
+      const bits = [];
+      if (decoded.theme) bits.push(`Theme: ${decoded.theme}`);
+      if (decoded.theirEmotionNeed) bits.push(`Their side: ${decoded.theirEmotionNeed}`);
+      if (decoded.yourEmotionNeed) bits.push(`Your side: ${decoded.yourEmotionNeed}`);
+      return bits.join('\n');
+    }
+
+    function fallbackCustomDecodeFromText(inputText) {
+      const parsedMessage = inferOtherMessageFromInput(inputText);
+      const local = decodeMessageLocal(parsedMessage || inputText);
+      const theirSide = local.translation || "They want to feel heard and emotionally safe.";
+
+      return {
+        initialText: parsedMessage || inputText,
+        theme: "Emotional disconnection and unclear needs",
+        theirEmotionNeed: theirSide,
+        yourEmotionNeed: "You likely want clarity, respect, and a practical next step.",
+        translation: local.translation,
+        perfectResponse: local.perfectResponse,
+        summary: "Name the feeling first, then ask one calm question."
+      };
+    }
+
+    function normalizeCustomDecode(json, rawInput) {
+      const safe = json || {};
+      const parsedMessage = (safe.theirLatestMessage || safe.initialText || "").trim();
+      const fallbackMessage = inferOtherMessageFromInput(rawInput);
+      const initialText = parsedMessage || fallbackMessage || String(rawInput || "").trim();
+
+      const theirEmotionNeed = (safe.theirEmotionNeed || safe.partnerEmotionNeed || "").trim();
+      const yourEmotionNeed = (safe.yourEmotionNeed || "").trim();
+      const theme = (safe.theme || "").trim();
+      const translation = (safe.translation || theirEmotionNeed || "").trim();
+      const perfectResponse = (safe.groundedOpener || safe.perfectResponse || "").trim();
+      const summary = (safe.summary || buildInitialDecoderSummary({
+        theme,
+        theirEmotionNeed,
+        yourEmotionNeed
+      })).trim();
+
+      return {
+        initialText,
+        theme: theme || "Emotional friction around unmet needs",
+        theirEmotionNeed: theirEmotionNeed || "They likely feel hurt or stressed and want to feel understood.",
+        yourEmotionNeed: yourEmotionNeed || "You likely want calm, clarity, and direction.",
+        translation: translation || "There is a deeper feeling and need under these words.",
+        perfectResponse: perfectResponse || "I hear you. That makes sense. Help me understand what you need most right now.",
+        summary: summary || "Start by naming the feeling under the words."
+      };
+    }
+
+    async function analyzeCustomIntake(inputText, imageDataUrl) {
+      const rawText = String(inputText || "").trim();
+      const hasImage = !!imageDataUrl;
+      const person = getPersonNoun();
+
+      const voicePrompt = philVoicePrompt();
+
+      const prompt =
+`${voicePrompt}
+
+You are preparing a Grounded Messaging simulation with a ${person}.
+Find the main emotional pattern and decode both sides.
+
+Return JSON ONLY:
+{
+  "theirLatestMessage": "single latest message from the other person to practice against",
+  "theme": "short phrase for overall pattern",
+  "theirEmotionNeed": "1 sentence: likely emotion + need of the other person",
+  "yourEmotionNeed": "1 sentence: likely emotion + need of the user",
+  "translation": "1 sentence: hidden meaning under their words",
+  "groundedOpener": "1-2 sentences user can send now",
+  "summary": "1 short sentence for what to notice"
+}`;
+
+      let response = "";
+      if (rawText) {
+        response = await callGemini(`${prompt}\n\nConversation to analyze:\n"""${rawText}"""`);
+      } else if (hasImage) {
+        response = await callGeminiWithImage(`${prompt}\n\nUse the screenshot to read the conversation.`, imageDataUrl);
+      } else {
+        throw new Error("No input provided.");
+      }
+
+      const json = JSON.parse(cleanJson(response));
+      return normalizeCustomDecode(json, rawText);
     }
 
     // START SCENARIO
     function startScenario(scenarioData) {
       activeScenario = scenarioData;
-      currentTranslation = scenarioData.translation || "They're sharing a feeling.";
+      currentTranslation = scenarioData.translation || "They’re sharing a feeling.";
       conversationStage = 0;
       lastReplyText = "";
 
+      // reset win/strike progress for this scenario
       resetProgressState();
 
       chatHistory = [
@@ -1365,60 +1717,89 @@
 
       document.getElementById('chat-view').classList.remove('translate-x-full');
 
-      if (scenarioData.id === 'custom') runInitialDecoder(scenarioData.initialText);
+      if (scenarioData.id === 'custom') runInitialDecoder(scenarioData.initialText, scenarioData.decoded || null);
     }
 
     function buildCustomScenarioDefaults() {
       const role = practicePerson;
       if (role === 'coworker') {
         return {
-          perfectResponse: "I hear you. Thanks for flagging it. What do you need from me next so we're aligned?",
+          perfectResponse: "I hear you. Thanks for flagging it. You’re right to call it out. What do you need from me first so we’re aligned?",
           tips: "Stay professional: own impact, clarify, and propose a timeline.",
-          translation: "They're stressed and need clarity and follow-through."
+          translation: "They’re stressed and need clarity and follow-through."
         };
       }
       if (role === 'family') {
         return {
-          perfectResponse: "I hear you. That makes sense. I don't want us fighting—help me understand what you need from me.",
-          tips: "Warm boundary: validate the feeling, then get clear on what's needed.",
-          translation: "They're hurt and want connection, respect, or reassurance."
+          perfectResponse: "I hear you. That makes sense. I don’t want us fighting. Help me understand what you need from me.",
+          tips: "Warm boundary: validate the feeling, then get clear on what’s needed.",
+          translation: "They’re hurt and want connection, respect, or reassurance."
         };
       }
       return {
-        perfectResponse: "I hear you. That makes sense. Help me understand what you're needing right now.",
+        perfectResponse: "I hear you. That makes sense. I want us on the same team. Help me understand what you need right now.",
         tips: "Slow it down. Name the feeling first. Stay on their side.",
-        translation: "They're hurting and need reassurance, connection, or safety."
+        translation: "They’re hurting and need reassurance, connection, or safety."
       };
     }
 
-    function startCustomScenario() {
-      const input = document.getElementById('custom-input').value.trim();
-      if (!input) return;
-      document.getElementById('custom-modal').classList.add('hidden');
+    async function startCustomScenario() {
+      if (customScenarioBusy) return;
 
-      const base = buildCustomScenarioDefaults();
-      const extraRed = practicePerson === 'coworker'
-        ? ["unprofessional", "not my job", "your fault", "figure it out", "that's dumb"]
-        : [];
+      const inputEl = document.getElementById('custom-input');
+      const input = String(inputEl.value || "").trim();
+      const hasImage = !!customImageDataUrl;
+      if (!input && !hasImage) {
+        setCustomUploadStatus("Paste text or upload a screenshot to continue.", true);
+        inputEl.focus();
+        return;
+      }
 
-      const customScen = {
-        id: 'custom',
-        name: "Custom",
-        initialText: input,
-        redFlags: [...universalRedFlags, ...extraRed],
-        greenFlags: universalGreenFlags,
-        perfectResponse: base.perfectResponse,
-        tips: base.tips,
-        translation: "Let's decode what they may be feeling under the words.",
-        followUp: {
-          green: practicePerson === 'coworker' ? "Thanks. That helps—let's align and move forward." : "Okay. Thank you for hearing me.",
-          yellow: practicePerson === 'coworker' ? "Okay. I still need an update soon." : "Okay…",
-          red: practicePerson === 'coworker' ? "This is frustrating. I need you to take this seriously." : "Whatever."
+      setCustomStartBusy(true, "Starting...");
+
+      try {
+        let decoded;
+        try {
+          decoded = await analyzeCustomIntake(input, customImageDataUrl);
+        } catch (e) {
+          console.warn("Custom intake analysis failed", e);
+          if (input) decoded = fallbackCustomDecodeFromText(input);
+          else {
+            setCustomUploadStatus("Couldn’t read the screenshot. Try another image or paste text.", true);
+            return;
+          }
         }
-      };
 
-      startScenario(customScen);
-      document.getElementById('custom-input').value = '';
+        closeCustomScenarioModal();
+
+        const base = buildCustomScenarioDefaults();
+        const extraRed = practicePerson === 'coworker'
+          ? ["unprofessional", "not my job", "your fault", "figure it out", "that's dumb"]
+          : [];
+
+        const customScen = {
+          id: 'custom',
+          name: "Custom",
+          initialText: decoded.initialText || input,
+          redFlags: [...universalRedFlags, ...extraRed],
+          greenFlags: universalGreenFlags,
+          perfectResponse: polishGroundedResponse(decoded.perfectResponse || base.perfectResponse),
+          tips: base.tips,
+          translation: decoded.translation || base.translation,
+          decoded,
+          followUp: {
+            green: practicePerson === 'coworker' ? "Thanks. That helps—let’s align and move forward." : "Okay. Thank you for hearing me.",
+            yellow: practicePerson === 'coworker' ? "Okay. I still need an update soon." : "Okay…",
+            red: practicePerson === 'coworker' ? "This is frustrating. I need you to take this seriously." : "Whatever."
+          }
+        };
+
+        startScenario(customScen);
+        inputEl.value = '';
+        resetCustomImageSelection();
+      } finally {
+        setCustomStartBusy(false, "Start");
+      }
     }
 
     function appendMessage(type, text) {
@@ -1435,26 +1816,13 @@
       if (overlayLocked) return;
       if (scenarioWon) return;
 
-      if (!activeScenario) {
-        // Gentle nudge in overlay if they haven't selected a scenario yet
-        document.getElementById('feedback-overlay').classList.remove('hidden');
-        document.getElementById('feedback-title').innerText = "Pick a Scenario";
-        document.getElementById('feedback-badge').className = "hidden";
-        document.getElementById('feedback-text').innerText = "Choose a practice script (or start a New Simulation) first.";
-        document.getElementById('feedback-translation').innerText = `"Then type your reply and hit Send."`;
-        document.getElementById('feedback-perfect').innerText = "Got it.";
-        const left = document.getElementById('feedback-btn-left');
-        const right = document.getElementById('feedback-btn-right');
-        left.innerText = "Close";
-        right.innerText = "Close";
-        left.onclick = () => closeFeedback(true);
-        right.onclick = () => closeFeedback(true);
-        return;
-      }
-
       const input = document.getElementById('message-input');
       const text = input.value.trim();
       if (!text) return;
+
+      // new attempt clears pending win (we’ll recompute after grading)
+      pendingWin = false;
+      pendingWinPerfect = "";
 
       setFeedbackButtons("analysis");
 
@@ -1462,7 +1830,7 @@
       appendMessage('sent', text);
       chatHistory.push({ role: 'user', text: text });
       input.value = '';
-      input.style.height = 'auto';
+      autoResizeComposerInput();
 
       document.getElementById('feedback-overlay').classList.remove('hidden');
       document.getElementById('feedback-title').innerText = "Checking...";
@@ -1472,117 +1840,239 @@
       document.getElementById('feedback-translation').innerText = `"${currentTranslation}"`;
       document.getElementById('feedback-translation').parentElement.classList.remove('hidden');
 
-      setTimeout(() => analyzeResponseLocal(text), 450);
+      if (aiEnabled) analyzeWithGemini(activeScenario, text);
+      else setTimeout(() => analyzeResponseLocal(text), 600);
     }
 
     // LOCAL ANALYSIS
-    const sarcasticDismissals = ['fine, whatever', 'fine whatever', 'whatever', 'forget it', "i don't care", "don't care", 'do whatever', "doesn't matter", 'who cares', 'good luck', 'sure, fine', 'sure fine', 'go ahead'];
-
-    // REV method component detection (Reflect, Empathize, Validate -- Phil's core framework)
-    const revReflect  = ['hear you', 'hear that', 'i hear', 'hearing you', 'sounds like', 'i see that', 'i see you', 'i notice'];
-    const revEmpathize = ['makes sense', 'must be', 'must feel', 'that is hard', 'that is rough', 'i get it', 'i understand', 'i get that', 'that sucks', 'overwhelmed', 'exhausted', 'that is a lot', 'carrying a lot'];
-    const revValidate  = ['sorry', 'apologize', 'my bad', 'you are right', 'valid', 'fair', 'not wrong to feel', 'i believe you', 'that is fair', 'that makes sense', 'totally makes sense'];
-
-    function buildRedMessage(firstHit, lower) {
-      if (!firstHit) return 'That is going to land like a counter-punch. She is not looking for facts right now. She needs to know you are still there.';
-      if (['not true', 'i did', "no i didn't", "no i don't", 'yes you do'].some(function(p) { return firstHit.includes(p); })) return 'Defending the facts makes the feeling worse. She is not filing a case. She is hurting. Start there.';
-      if (['always', 'never'].includes(firstHit)) return "Pointing out she said 'always' or 'never' is a dead end. Skip the logic. Go to the emotion.";
-      if (['calm down', 'relax', 'chill'].includes(firstHit)) return "Calm down tells her feelings are a problem. Name what she is feeling instead. That is what actually de-escalates.";
-      if (['crazy', 'dramatic', 'drama'].includes(firstHit)) return 'Labeling her response shuts the gate. Even if it feels like too much. Name the feeling. Do not dismiss it.';
-      if (['stupid', 'idiot', 'shut up', 'you suck', 'bitch', 'fuck', 'shit', 'asshole'].some(function(p) { return firstHit.includes(p); })) return 'That kind of language breaks safety fast. There is no recovering from it in the moment. Reset and try again.';
-      return '"' + firstHit + '" is landing as defense. She is not looking for a counterpoint. She needs to know you are still there.';
-    }
-
-    function buildGreenMessage(greenHits, revScore, hitR, hitE, hitV) {
-      var tip = activeScenario && activeScenario.tips ? ('\n\nRemember: ' + activeScenario.tips) : '';
-      if (revScore === 3) return 'You just ran the REV method. Reflect, Empathize, Validate. That is the framework. That is the work right there.' + tip;
-      if (revScore === 2) {
-        if (!hitV) return 'You reflected and empathized. Now add validation. "That makes sense" or "you are not wrong to feel that." Then you have the full REV.' + tip;
-        if (!hitE) return 'You reflected and validated. Layer in empathy. Name what the feeling must be like for her. Then that response is complete.' + tip;
-        return 'You validated and reflected. Open with "I hear you" to anchor it. That is a complete grounded response.' + tip;
-      }
-      if (greenHits.some(function(h) { return ['sorry','apologize','my bad'].includes(h); })) return 'Owning it first. That is the move. Most men skip straight to defense. You did not.' + tip;
-      if (greenHits.some(function(h) { return ['hear you','hear that','i hear','hearing you'].includes(h); })) return 'You started with her feeling, not your defense. That is the whole game right there.' + tip;
-      if (greenHits.some(function(h) { return ['makes sense','total sense','make sense','totally sense'].includes(h); })) return 'Validation before explanation. That is what she is looking for. You got it.' + tip;
-      if (greenHits.some(function(h) { return ['team','together','partner','on the same page'].includes(h); })) return 'You moved toward connection instead of away from it. That is what a grounded man does.' + tip;
-      if (greenHits.some(function(h) { return ['love you','love ya','i love you'].includes(h); })) return 'Anchoring with love in the middle of conflict. That is not soft. That is strong.' + tip;
-      return 'You led with the feeling, not the defense. That is the right move. Keep building on that.' + tip;
-    }
-
-    function buildYellowMessage(lower, greenHits) {
-      if (lower.includes('okay') && lower.split(' ').length <= 3) return '"Okay" keeps the peace but does not build connection. Add what you hear her feeling. That is what actually lands.';
-      if (greenHits.some(function(h) { return ['sorry','apologize','my bad'].includes(h); })) return 'Apology is a start. Now name the feeling behind it. "I am sorry you have been carrying this alone" hits different than just sorry.';
-      if (greenHits.length > 0) return 'You got started. Now go one layer deeper. Name the specific emotion she is carrying, not just what happened.';
-      return 'Almost there. Name the emotion she is carrying before you explain yourself. That is what opens the gate.';
-    }
-
-    var hardRedPhrases = ['kill yourself', 'kill your self', 'go kill yourself', 'kys', 'i hate you', 'drop dead', 'go to hell', 'go die', 'i wish you were dead'];
-
     function analyzeResponseLocal(userText) {
-      var lower = userText.toLowerCase();
-      var score = 0, redHits = [], greenHits = [];
+      const lower = userText.toLowerCase();
+      let score = 0, redHits = [], greenHits = [];
 
-      // Hard red -- these are always red no matter what else is in the message
-      if (hardRedPhrases.some(function(p) { return lower.includes(p); })) {
-        lastGrade = 'red';
-        var feedback = { grade: 'red', title: 'Too Hot', badgeColor: 'bg-red-100 text-red-800', message: 'That is not a response. That is a weapon. No matter how flooded you are, this ends the conversation and does real damage. Reset.' };
-        processFeedbackAndMaybeWin(feedback, activeScenario.perfectResponse, currentTranslation);
-        return;
-      }
-
-      // Catch sarcastic/dismissive responses before flag scanning
-      var sarcasticHit = sarcasticDismissals.find(function(s) { return lower.includes(s); });
-      if (sarcasticHit) {
-        lastGrade = 'red';
-        var feedback = { grade: 'red', title: 'Too Hot', badgeColor: 'bg-red-100 text-red-800', message: '"' + userText.trim() + '" reads as dismissal. That shuts the conversation down. Stay in the feeling instead.' };
-        processFeedbackAndMaybeWin(feedback, activeScenario.perfectResponse, currentTranslation);
-        return;
-      }
-
-      // REV method detection
-      var hitR = revReflect.some(function(r) { return lower.includes(r); });
-      var hitE = revEmpathize.some(function(e) { return lower.includes(e); });
-      var hitV = revValidate.some(function(v) { return lower.includes(v); });
-      var revScore = [hitR, hitE, hitV].filter(Boolean).length;
-
-      (activeScenario.redFlags || []).forEach(function(f) { if (lower.includes(f)) { score -= 10; redHits.push(f); } });
-      (activeScenario.greenFlags || []).forEach(function(f) { if (lower.includes(f)) { score += 5; greenHits.push(f); } });
+      activeScenario.redFlags.forEach(f => { if (lower.includes(f)) { score -= 10; redHits.push(f); } });
+      activeScenario.greenFlags.forEach(f => { if (lower.includes(f)) { score += 5; greenHits.push(f); } });
 
       if (userText.split(' ').length < 2) score -= 1;
 
-      var feedback = {};
+      let feedback = {};
       if (score <= -5 || redHits.length > 0) {
         lastGrade = 'red';
-        feedback = { grade: 'red', title: 'Too Hot', badgeColor: 'bg-red-100 text-red-800', message: buildRedMessage(redHits[0], lower) };
-      } else if (score >= 4 || greenHits.length > 0 || revScore >= 2) {
+        const profanity = ["bitch", "fuck", "shit", "asshole", "cunt", "you suck"];
+        const hit = redHits.find(r => profanity.some(p => r.includes(p)));
+        let msg = `That landed defensive (“${redHits[0]}”).`;
+        if (hit) msg = "That kind of language breaks safety fast. Reset and try again.";
+        if ((redHits[0] || "").includes("yes you")) msg = "Arguing facts usually makes it worse. Start with the feeling.";
+        feedback = { grade: 'red', title: 'Too Hot 🛑', badgeColor: 'bg-red-100 text-red-800', message: msg };
+      } else if (score >= 4 || greenHits.length > 0) {
         lastGrade = 'green';
-        feedback = { grade: 'green', title: 'Grounded', badgeColor: 'bg-green-100 text-green-800', message: buildGreenMessage(greenHits, revScore, hitR, hitE, hitV) };
+        feedback = { grade: 'green', title: 'Grounded ✅', badgeColor: 'bg-green-100 text-green-800', message: `Good work. You led with validation (“${greenHits[0] || 'the feeling'}”).` };
       } else {
         lastGrade = 'yellow';
-        feedback = { grade: 'yellow', title: 'Close', badgeColor: 'bg-yellow-100 text-yellow-800', message: buildYellowMessage(lower, greenHits) };
+        feedback = { grade: 'yellow', title: 'Close 👍', badgeColor: 'bg-yellow-100 text-yellow-800', message: "Decent start. Add: “I hear you” + name one feeling." };
       }
 
       processFeedbackAndMaybeWin(feedback, activeScenario.perfectResponse, currentTranslation);
     }
 
+    // GEMINI (✅ now uses protected server function)
+    function callGemini(prompt) {
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(err => {
+            reject(new Error(err && err.message ? err.message : String(err || "")));
+          })
+          .geminiGenerate(prompt);
+      });
+    }
 
-    // --- INITIAL DECODER (custom input) — OFFLINE ONLY ---
-    function runInitialDecoder(wifeText) {
+    function callGeminiWithImage(prompt, imageDataUrl) {
+      const parsed = parseDataUrlImage(imageDataUrl);
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(err => {
+            reject(new Error(err && err.message ? err.message : String(err || "")));
+          })
+          .geminiGenerateWithImage(prompt, parsed.imageBase64, parsed.mimeType);
+      });
+    }
+
+    function buildAIPersonaPrompt() {
+      const role = practicePerson;
+      if (role === 'coworker') {
+        return wifePersona === 'pursuer'
+          ? "Coworker is direct and persistent. Pushes for clarity and timelines when stressed."
+          : "Coworker is reserved and brief. Withdraws when overwhelmed and prefers concise updates.";
+      }
+      if (role === 'family') {
+        return wifePersona === 'pursuer'
+          ? "Family member is anxious/pursuer. Gets intense when they feel ignored and wants contact."
+          : "Family member is avoidant/withdrawer. Gets quiet when overwhelmed and wants space.";
+      }
+      return wifePersona === 'pursuer'
+        ? "Partner is Anxious/Pursuer. Needs reassurance and connection."
+        : "Partner is Avoidant/Withdrawer. Needs space and calm.";
+    }
+
+    async function analyzeWithGemini(scenario, userText) {
+      const personaPrompt = buildAIPersonaPrompt();
+      const voicePrompt = philVoicePrompt();
+
+      const otherPerson = getPersonNoun();
+
+      const systemPrompt =
+`${personaPrompt}
+${voicePrompt}
+
+Grade the user's text. Rules:
+- Name the emotion first (reflect + empathy).
+- No defending facts.
+- No attacks/insults.
+- Arguing facts like "No I didn't" is RED.
+
+${otherPerson} said: "${chatHistory[chatHistory.length - 2].text}"
+Hidden meaning: ${currentTranslation}
+User replied: "${userText}"
+
+Return valid JSON ONLY:
+{
+  "grade": "green"|"yellow"|"red",
+  "title": "Title (short)",
+  "message": "Feedback (1–3 short sentences)",
+  "perfectResponse": "Rewrite (1–2 short text-message sentences, grounded and human, 18-34 words)",
+  "translation": "Hidden emotion/need (1 sentence)"
+}`;
+
+      try {
+        const response = await callGemini(systemPrompt);
+        let json = JSON.parse(cleanJson(response));
+        if (!json.grade) json.grade = 'yellow';
+
+        lastGrade = String(json.grade).toLowerCase();
+
+        processFeedbackAndMaybeWin(
+          {
+            grade: lastGrade,
+            title: json.title || "Analysis",
+            badgeColor: lastGrade === 'red' ? 'bg-red-100 text-red-800' : (lastGrade === 'green' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'),
+            message: json.message || "Good effort. Try naming the feeling first."
+          },
+          polishGroundedResponse(json.perfectResponse || scenario.perfectResponse),
+          json.translation || currentTranslation
+        );
+      } catch (e) {
+        console.warn("API Fail", e);
+        analyzeResponseLocal(userText);
+      }
+    }
+
+    function buildRoleplayPrompt() {
+      const role = practicePerson;
+      if (role === 'coworker') {
+        return wifePersona === 'pursuer'
+          ? "Roleplay: A direct coworker who is stressed and needs clarity. Keeps it professional."
+          : "Roleplay: A reserved coworker who is overwhelmed. Keeps it professional and brief.";
+      }
+      if (role === 'family') {
+        return wifePersona === 'pursuer'
+          ? "Roleplay: An anxious family member. Escalates when they feel ignored and softens when they feel understood."
+          : "Roleplay: An avoidant family member. Withdraws when overwhelmed and softens when they feel safe and not pressured.";
+      }
+      return wifePersona === 'pursuer'
+        ? "Roleplay: An anxious partner. Escalates when they feel unseen, and softens when they feel understood."
+        : "Roleplay: An avoidant partner. Withdraws when overwhelmed, and softens when they feel safe and not pressured.";
+    }
+
+    async function generateReplyWithGemini() {
+      const personaPrompt = buildRoleplayPrompt();
+      const role = practicePerson;
+
+      const behaviorGuide =
+`Conversation rules:
+- Write at an 8th grade reading level.
+- Keep it like texting (1–2 sentences).
+- If LAST_GRADE is GREEN: the person calms down and softens.
+- If LAST_GRADE is YELLOW: the person stays tense but a little open.
+- If LAST_GRADE is RED: the person escalates some.
+- If role is COWORKER: stay professional (no insults, no slurs, no abuse).
+Return JSON ONLY: { "reply": "...", "translation": "hidden emotion/need (1 sentence)" }`;
+
+      const systemPrompt =
+`${personaPrompt}
+ROLE: ${role.toUpperCase()}
+LAST_GRADE: ${lastGrade}
+HISTORY: ${JSON.stringify(chatHistory)}
+${behaviorGuide}`;
+
+      try {
+        const response = await callGemini(systemPrompt);
+        const json = JSON.parse(cleanJson(response));
+        const replyText = json.reply || "…";
+        currentTranslation = json.translation || currentTranslation;
+
+        let delay = wifePersona === 'pursuer' ? 800 : 2500;
+
+        setTimeout(() => {
+          document.getElementById('typing-indicator').classList.add('hidden');
+          appendMessage('received', replyText);
+          chatHistory.push({ role: 'model', text: replyText });
+          scrollToBottom();
+          conversationStage++;
+        }, delay);
+      } catch (e) {
+        fallbackReply();
+      }
+    }
+
+    function fallbackReply() {
+      let delay = wifePersona === 'pursuer' ? 800 : 2500;
+      setTimeout(() => {
+        document.getElementById('typing-indicator').classList.add('hidden');
+        let replyData = activeScenario.followUp ? activeScenario.followUp[lastGrade] : null;
+        let replyText = replyData || "…";
+
+        lastReplyText = replyText;
+        currentTranslation = practicePerson === 'coworker'
+          ? "They’re stressed and need clarity, respect, and follow-through."
+          : "They have big feelings and need safety and connection.";
+
+        appendMessage('received', replyText);
+        chatHistory.push({ role: 'model', text: replyText });
+        scrollToBottom();
+        conversationStage++;
+      }, delay);
+    }
+
+    function cleanJson(text) {
+      if (!text) return "{}";
+      return text.replace(/```json/g, '').replace(/```/g, '').trim();
+    }
+
+    function applyInitialDecoderResult(decoded, fallbackText) {
+      const safe = normalizeCustomDecode(decoded, fallbackText || "");
+      currentTranslation = safe.translation || currentTranslation;
+
+      const detail = buildInitialDecoderSummary(safe);
+      const summary = safe.summary || "Here’s what they may be feeling under the words:";
+      const feedbackBody = detail ? `${summary}\n\n${detail}` : summary;
+
+      document.getElementById('feedback-text').innerText = feedbackBody;
+      document.getElementById('feedback-translation').innerText = `"${safe.translation || currentTranslation}"`;
+      document.getElementById('feedback-perfect').innerText = polishGroundedResponse(safe.perfectResponse || activeScenario.perfectResponse);
+    }
+
+    // --- INITIAL DECODER (custom input) ---
+    async function runInitialDecoder(wifeText, preDecoded = null) {
       overlayMode = "decoder";
 
       document.getElementById('feedback-overlay').classList.remove('hidden');
       document.getElementById('feedback-title').innerText = "Emotion Decoder";
       document.getElementById('feedback-badge').className = "hidden";
 
-      document.getElementById('feedback-text').innerText = "Here's what they may be feeling under the words:";
+      document.getElementById('feedback-text').innerText = "One second — I’m decoding what’s underneath the words…";
       document.getElementById('feedback-translation').innerText = `"Decoding..."`;
       document.getElementById('feedback-perfect').innerText = "...";
-
-      const local = decodeMessageLocal(wifeText);
-      currentTranslation = local.translation;
-
-      document.getElementById('feedback-translation').innerText = `"${local.translation}"`;
-      document.getElementById('feedback-perfect').innerText = local.perfectResponse || activeScenario?.perfectResponse || "";
 
       const left = document.getElementById('feedback-btn-left');
       const right = document.getElementById('feedback-btn-right');
@@ -1590,10 +2080,51 @@
       left.innerText = "Close";
       left.onclick = () => { closeFeedback(); focusInputSoon(); };
 
-      right.innerText = "Start Practice";
-      right.disabled = false;
-      right.classList.remove("opacity-60", "cursor-not-allowed");
-      right.onclick = () => { closeFeedback(); focusInputSoon(); };
+      right.innerText = "Decoding…";
+      right.disabled = true;
+      right.classList.add("opacity-60", "cursor-not-allowed");
+      right.onclick = () => {};
+
+      try {
+        if (preDecoded && typeof preDecoded === "object") {
+          applyInitialDecoderResult(preDecoded, wifeText);
+          return;
+        }
+
+        const personaHint = buildAIPersonaPrompt();
+        const voicePrompt = philVoicePrompt();
+
+        const prompt =
+`${personaHint}
+${voicePrompt}
+You are a relationship coach.
+
+Decode the emotion/need behind this message from a ${getPersonNoun()}:
+"${wifeText}"
+
+Return JSON ONLY:
+{
+  "theirLatestMessage": "same message rewritten cleanly if needed",
+  "theme": "short phrase for overall pattern",
+  "theirEmotionNeed": "1 sentence: likely emotion + need of the other person",
+  "yourEmotionNeed": "1 sentence: likely emotion + need of the user",
+  "translation": "1 sentence: hidden meaning under their words",
+  "perfectResponse": "1–2 sentences: grounded response",
+  "summary": "1 short sentence: what to notice"
+}`;
+
+        const response = await callGemini(prompt);
+        const json = JSON.parse(cleanJson(response));
+        applyInitialDecoderResult(json, wifeText);
+
+      } catch (e) {
+        applyInitialDecoderResult(fallbackCustomDecodeFromText(wifeText), wifeText);
+      } finally {
+        right.innerText = "Start Practice";
+        right.disabled = false;
+        right.classList.remove("opacity-60", "cursor-not-allowed");
+        right.onclick = () => { closeFeedback(); focusInputSoon(); };
+      }
     }
 
     function decodeMessageLocal(text) {
@@ -1602,52 +2133,51 @@
       if (practicePerson === 'coworker') {
         if (t.includes("deadline") || t.includes("eod") || t.includes("blocked") || t.includes("need") || t.includes("asap")) {
           return {
-            translation: "They're stressed and need clarity and follow-through.",
-            perfectResponse: "I hear you. Sorry for the delay. Here's my timeline, and I'll send an update if anything changes."
+            translation: "They’re stressed and need clarity and follow-through.",
+            perfectResponse: "I hear you. Sorry for the delay. Here’s my timeline, and I’ll send an update if anything changes."
           };
         }
         if (t.includes("rude") || t.includes("tone") || t.includes("not okay")) {
           return {
             translation: "They feel disrespected and want professionalism and safety.",
-            perfectResponse: "Thanks for the feedback. I'm sorry it landed that way. I'll adjust my tone and we can reset."
+            perfectResponse: "Thanks for the feedback. I’m sorry it landed that way. I’ll adjust my tone and we can reset."
           };
         }
       }
 
       if (t.includes("never") || t.includes("always") || t.includes("don't care") || t.includes("listen") || t.includes("ignoring")) {
         return {
-          translation: "They feel unseen, and they need to know you're actually with them.",
+          translation: "They feel unseen, and they need to know you’re actually with them.",
           perfectResponse: "I hear you. That makes sense. What part hit you the hardest?"
         };
       }
       if (t.includes("kids") || t.includes("house") || t.includes("everything") || t.includes("help") || t.includes("too much")) {
         return {
           translation: "They feel overwhelmed, and they need you to step in as a teammate.",
-          perfectResponse: "I see you're overwhelmed. That makes sense. Tell me what would help first."
+          perfectResponse: "I see you’re overwhelmed. That makes sense. Tell me what would help first."
         };
       }
       if (t.includes("money") || t.includes("spent") || t.includes("saving")) {
         return {
           translation: "They feel anxious about security, and they need a plan and reassurance.",
-          perfectResponse: "I get why you're worried. Let's look at it together and make a plan."
+          perfectResponse: "I get why you’re worried. Let’s look at it together and make a plan."
         };
       }
       if (t.includes("leave me alone") || t.includes("fine") || t.includes("whatever") || t.includes("stop")) {
         return {
-          translation: "They're flooded, and they need space while still feeling emotionally safe.",
-          perfectResponse: "Okay. I'll give you space. I'm here when you're ready."
+          translation: "They’re flooded, and they need space while still feeling emotionally safe.",
+          perfectResponse: "Okay. I’ll give you space. I’m here when you’re ready."
         };
       }
 
       return {
-        translation: "They're carrying a strong feeling and want you to stay present and on their side.",
+        translation: "They’re carrying a strong feeling and want you to stay present and on their side.",
         perfectResponse: "I hear you. That makes sense. Help me understand what you need most right now."
       };
     }
 
     function scrollToBottom() {
       const c = document.getElementById('messages-container');
-      if (!c) return;
       c.scrollTop = c.scrollHeight;
     }
 
@@ -1657,6 +2187,7 @@
       document.getElementById('chat-view').classList.add('translate-x-full');
       document.getElementById('feedback-overlay').classList.add('hidden');
       if (reset) resetProgressState();
+      // refresh list so completed checkmarks show
       initScenarios();
     }
 
@@ -1685,7 +2216,6 @@
     function focusInputSoon() {
       setTimeout(() => {
         const input = document.getElementById('message-input');
-        if (!input) return;
         input.focus();
         scrollToBottom();
       }, 100);
@@ -1693,8 +2223,6 @@
 
     // CORE UI POPULATE
     function showFeedbackUICore(fb, perfect, translation) {
-      document.getElementById('win-cta').classList.add('hidden');
-      document.getElementById('strikes-cta').classList.add('hidden');
       setFeedbackButtons("analysis");
 
       const badge = document.getElementById('feedback-badge');
@@ -1703,8 +2231,8 @@
 
       document.getElementById('feedback-title').innerText = fb.title || "Analysis";
       document.getElementById('feedback-text').innerText = fb.message || "";
-      document.getElementById('feedback-perfect').innerText = perfect || "";
-      document.getElementById('feedback-translation').innerText = `"${translation || "They're sharing a feeling."}"`;
+      document.getElementById('feedback-perfect').innerText = polishGroundedResponse(perfect || "");
+      document.getElementById('feedback-translation').innerText = `"${translation || "They’re sharing a feeling."}"`;
 
       if (fb.grade === 'red') document.getElementById('messages-container').classList.add('shake');
       setTimeout(() => document.getElementById('messages-container').classList.remove('shake'), 500);
@@ -1712,24 +2240,33 @@
       document.getElementById('feedback-overlay').classList.remove('hidden');
     }
 
-    // process feedback, update strike/win, then decide what to do
+    // ✅ NEW: always show normal feedback overlay first.
+    // If win condition is met, set pendingWin = true and trigger win only when user presses Continue.
     function processFeedbackAndMaybeWin(fb, perfect, translation) {
       currentTranslation = translation || currentTranslation;
 
       gradeHistory.push(String(fb.grade || 'yellow').toLowerCase());
       recalcConsecutiveReds();
 
+      // clear any previous pending win and recompute
+      pendingWin = false;
+      pendingWinPerfect = "";
+
       if (consecutiveReds >= 3) {
         showThreeStrikesOverlay();
         return;
       }
 
-      if (checkWinCondition()) {
-        triggerWinFlow(perfect);
-        return;
-      }
-
+      // show the normal Emotion Decoder overlay like usual
       showFeedbackUICore(fb, perfect, currentTranslation);
+
+      // after showing feedback, set pending win if earned
+      if (checkWinCondition()) {
+        pendingWin = true;
+        pendingWinPerfect = (perfect && String(perfect).trim())
+          ? String(perfect).trim()
+          : ((activeScenario && activeScenario.perfectResponse) ? activeScenario.perfectResponse : "");
+      }
     }
 
     // CLOSE FEEDBACK
@@ -1754,6 +2291,10 @@
       if (gradeHistory.length > 0) gradeHistory.pop();
       recalcConsecutiveReds();
 
+      // editing clears pending win (recomputed on next grade)
+      pendingWin = false;
+      pendingWinPerfect = "";
+
       document.getElementById('message-input').focus();
     }
 
@@ -1761,153 +2302,28 @@
       if (overlayLocked) return;
       if (scenarioWon) return;
 
+      // ✅ If win is pending, Continue takes you to Win flow (after normal feedback screen)
+      if (pendingWin) {
+        const pr = pendingWinPerfect;
+        pendingWin = false;
+        pendingWinPerfect = "";
+        triggerWinFlow(pr);
+        return;
+      }
+
       closeFeedback();
       document.getElementById('typing-indicator').classList.remove('hidden');
       scrollToBottom();
 
-      fallbackReply(); // OFFLINE: canned follow-ups
-    }
-
-    // OFFLINE: staged canned replies with generic fallback pool
-    const genericFollowUps = {
-      wife: {
-        green: [
-          "That actually helps. I just need to know you're really hearing me.",
-          "I love you. I just need more of this.",
-          "I don't want to fight. I just want to feel like we're on the same team.",
-          "Thank you for not getting defensive. That means a lot.",
-          "I just need us to be okay.",
-          "Can we just talk tonight? Really talk?"
-        ],
-        yellow: [
-          "I hear you. I just need a minute.",
-          "Okay. I just need you to follow through.",
-          "I want to work through this. I just don't know how right now.",
-          "I'm trying. I just feel like we keep going in circles.",
-          "Let's just drop it for now. I need to calm down."
-        ],
-        red: [
-          "This is exactly what I'm talking about.",
-          "You're not hearing me. You're just defending yourself.",
-          "I'm so tired of this.",
-          "Forget it. I don't want to talk anymore.",
-          "See? This is why I shut down."
-        ]
-      },
-      girlfriend: {
-        green: [
-          "That's all I needed to hear.",
-          "Thank you. I just needed to feel like I mattered.",
-          "Okay. I don't want to fight.",
-          "I just need you to stay consistent."
-        ],
-        yellow: [
-          "Okay…",
-          "I hope so.",
-          "Fine. Let's move on.",
-          "I just need more effort."
-        ],
-        red: [
-          "You're doing it again.",
-          "This is why I get insecure.",
-          "I don't know why I try.",
-          "Just forget it."
-        ]
-      },
-      family: {
-        green: [
-          "Thanks. That actually means something.",
-          "I just want us to be okay.",
-          "I appreciate that.",
-          "Okay. I can respect that."
-        ],
-        yellow: [
-          "Okay. Just follow through.",
-          "I hear you. I just needed to say it.",
-          "Fine. Let's drop it.",
-          "Okay…"
-        ],
-        red: [
-          "See? You never change.",
-          "This is why we have issues.",
-          "I'm done talking about it.",
-          "Whatever."
-        ]
-      },
-      coworker: {
-        green: [
-          "Appreciate that. Let's move forward.",
-          "Thanks — that's all I needed.",
-          "Good. Let's get aligned.",
-          "That works. Send an update when it's done."
-        ],
-        yellow: [
-          "Okay. Keep me posted.",
-          "Alright. Just don't let it slide.",
-          "Fine. I'll follow up later.",
-          "Let's just get it done."
-        ],
-        red: [
-          "This keeps happening.",
-          "I'm going to have to escalate this.",
-          "I need you to take this seriously.",
-          "This isn't working."
-        ]
-      }
-    };
-
-    function getGenericReply(grade) {
-      const pool = (genericFollowUps[practicePerson] || genericFollowUps.wife)[grade] || ["…"];
-      return pool[Math.floor(Math.random() * pool.length)];
-    }
-
-    function getStageTranslation(stage, grade) {
-      if (practicePerson === 'coworker') return "They need clarity, reliability, and a clear next step.";
-      if (grade === 'red') {
-        if (stage < 2) return "That landed as more conflict. She's more guarded now — don't push.";
-        return "She's shutting down. She doesn't feel safe yet. Reset before you say anything else.";
-      }
-      if (grade === 'green') {
-        if (stage < 2) return "She's starting to feel heard. Stay with it — don't pivot to fix-mode yet.";
-        return "She's softening. Stay present. One more grounded reply and you'll feel the shift.";
-      }
-      return "She's processing. Steady presence — not your defense — is what she needs right now.";
-    }
-
-    function fallbackReply() {
-      let delay = wifePersona === 'pursuer' ? 800 : 2500;
-      setTimeout(() => {
-        document.getElementById('typing-indicator').classList.add('hidden');
-
-        let replyText;
-        const stages = activeScenario?.followUps;
-        if (stages && stages.length > 0) {
-          if (conversationStage < stages.length) {
-            const stageData = stages[conversationStage];
-            replyText = (stageData && stageData[lastGrade]) || getGenericReply(lastGrade);
-          } else {
-            replyText = getGenericReply(lastGrade);
-          }
-        } else {
-          // legacy single-stage fallback
-          replyText = activeScenario?.followUp?.[lastGrade] || getGenericReply(lastGrade);
-        }
-
-        lastReplyText = replyText;
-        currentTranslation = getStageTranslation(conversationStage, lastGrade);
-
-        appendMessage('received', replyText);
-        chatHistory.push({ role: 'model', text: replyText });
-        scrollToBottom();
-        conversationStage++;
-      }, delay);
+      if (aiEnabled) generateReplyWithGemini();
+      else fallbackReply();
     }
 
     // WIN FLOW
-    function triggerWinFlow(perfectResponseFromLocal) {
+    function triggerWinFlow(perfectResponseFromAI) {
       scenarioWon = true;
 
-      markScenarioCompleted(practicePerson, activeScenario?.id);
+      markScenarioCompleted(practicePerson, activeScenario ? activeScenario.id : null);
 
       closeFeedback(true);
 
@@ -1922,11 +2338,11 @@
         appendMessage('received', closing);
         chatHistory.push({ role: 'model', text: closing });
 
-        showWinOverlay(perfectResponseFromLocal);
+        showWinOverlay(perfectResponseFromAI);
       }, delay);
     }
 
-    function showWinOverlay(perfectResponseFromLocal) {
+    function showWinOverlay(perfectResponseFromAI) {
       const badge = document.getElementById('feedback-badge');
       badge.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-3 bg-green-100 text-green-800";
       badge.innerText = "WIN";
@@ -1935,9 +2351,9 @@
       document.getElementById('feedback-text').innerText = buildWinSummaryText();
       document.getElementById('feedback-translation').innerText = `"${currentTranslation || "You stayed connected under pressure."}"`;
       document.getElementById('feedback-perfect').innerText =
-        (perfectResponseFromLocal && String(perfectResponseFromLocal).trim())
-          ? String(perfectResponseFromLocal).trim()
-          : (activeScenario?.perfectResponse || "I hear you. That makes sense. Help me understand what you need right now.");
+        (perfectResponseFromAI && String(perfectResponseFromAI).trim())
+          ? polishGroundedResponse(String(perfectResponseFromAI).trim())
+          : polishGroundedResponse((activeScenario && activeScenario.perfectResponse) ? activeScenario.perfectResponse : "I hear you. That makes sense. Help me understand what you need right now.");
 
       const left = document.getElementById('feedback-btn-left');
       const right = document.getElementById('feedback-btn-right');
@@ -1947,9 +2363,6 @@
 
       left.innerText = "Back";
       right.innerText = "Restart";
-
-      document.getElementById('strikes-cta').classList.add('hidden');
-      document.getElementById('win-cta').classList.remove('hidden');
 
       left.onclick = () => {
         goBack(true, true);
@@ -1962,6 +2375,9 @@
       };
 
       document.getElementById('feedback-overlay').classList.remove('hidden');
+
+      // ✅ If this win completes the entire category, show CTA modal once
+      maybeShowAllWonModal(practicePerson);
     }
 
     // 3 STRIKES OVERLAY
@@ -1969,8 +2385,6 @@
       overlayLocked = true;
 
       setFeedbackButtons("analysis");
-      document.getElementById('win-cta').classList.add('hidden');
-      document.getElementById('strikes-cta').classList.remove('hidden');
 
       const badge = document.getElementById('feedback-badge');
       badge.className = "inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-3 bg-red-100 text-red-800";
@@ -1979,14 +2393,15 @@
       document.getElementById('feedback-title').innerText = "3 Strikes — Reset";
 
       document.getElementById('feedback-text').innerText =
-        "Three reds in a row. That pattern right there — that's exactly what the Grounded Pursuit Blueprint is built for. " +
-        "Real frameworks, real men doing the work. You don't have to figure this out alone.";
+        "That’s three red replies in a row. You clearly need a reset. " +
+        "Take a break and come back when you’re calmer. " +
+        "If this is how it goes in real life, get support from a therapist before this pattern does more damage than it already has.";
 
       document.getElementById('feedback-translation').innerText =
         `"Reset move: name the emotion, own the impact, then ask one calm question."`;
 
       document.getElementById('feedback-perfect').innerText =
-        "I hear you. That makes sense. I'm sorry for how that landed. What do you need right now?";
+        "I hear you. That makes sense. I’m sorry for how that landed. What do you need right now?";
 
       const left = document.getElementById('feedback-btn-left');
       const right = document.getElementById('feedback-btn-right');
@@ -2006,7 +2421,7 @@
     }
 
     // ============================
-    // SELF-DECODE (OFFLINE)
+    // SELF-DECODE (GLOBAL)
     // ============================
     function openSelfDecodeModal() {
       const settings = document.getElementById('settings-modal');
@@ -2044,15 +2459,53 @@
       document.getElementById('selfdecode-rewrite').innerText = "...";
       document.getElementById('selfdecode-copy-hint').classList.add('hidden');
 
-      const result = localSelfDecode(text);
+      try {
+        const result = aiEnabled ? await runSelfDecodeAI(text) : localSelfDecode(text);
 
-      document.getElementById('selfdecode-summary').innerText = result.summary || "Here's a grounded version you can send.";
-      document.getElementById('selfdecode-translation').innerText = `"${result.translation || "Emotion: _____. Need: _____."}"`;
-      document.getElementById('selfdecode-rewrite').innerText =
-        result.perfectResponse || "I hear you. That makes sense. Can we talk about this calmly?";
+        document.getElementById('selfdecode-summary').innerText = result.summary || "Here’s a grounded version you can send.";
+        document.getElementById('selfdecode-translation').innerText = `"${result.translation || "Emotion: _____. Need: _____."}"`;
+        document.getElementById('selfdecode-rewrite').innerText =
+          polishGroundedResponse(result.perfectResponse || "I hear you. That makes sense. Can we talk about this calmly?");
+      } catch (e) {
+        const fallback = localSelfDecode(text);
+        document.getElementById('selfdecode-summary').innerText = fallback.summary;
+        document.getElementById('selfdecode-translation').innerText = `"${fallback.translation}"`;
+        document.getElementById('selfdecode-rewrite').innerText = fallback.perfectResponse;
+      } finally {
+        document.getElementById('selfdecode-input').value = "";
+        selfDecodeBusy = false;
+      }
+    }
 
-      document.getElementById('selfdecode-input').value = "";
-      selfDecodeBusy = false;
+    async function runSelfDecodeAI(userDraft) {
+      const voicePrompt = philVoicePrompt();
+
+      const prompt =
+`${voicePrompt}
+
+The user is writing a message to their ${getPersonNoun()}.
+Your job:
+1) Decode the emotion + need under what the user wrote (1 sentence).
+2) Rewrite the user's message into a grounded version they can send (1–2 sentences).
+3) Give a short summary (1 sentence) of what improved (ex: "You named the feeling and made a calm request.")
+
+User wrote:
+"${userDraft}"
+
+Return JSON ONLY:
+{
+  "translation": "1 sentence: emotion + need",
+  "perfectResponse": "1–2 sentences: grounded rewrite",
+  "summary": "1 short sentence"
+}`;
+
+      const response = await callGemini(prompt);
+      const json = JSON.parse(cleanJson(response));
+      return {
+        translation: json.translation,
+        perfectResponse: polishGroundedResponse(json.perfectResponse),
+        summary: json.summary
+      };
     }
 
     function localSelfDecode(userDraft) {
@@ -2066,18 +2519,19 @@
       if (t.includes("anxious") || t.includes("worried") || t.includes("scared")) { emotion = "anxious"; need = "reassurance and a plan"; }
       if (t.includes("angry") || t.includes("pissed") || t.includes("mad")) { emotion = "angry"; need = "to be heard without a fight"; }
 
-      let rewrite = `I'm feeling ${emotion}. I don't want to fight—can we slow down and talk about what we both need?`;
-      if (practicePerson === 'coworker') rewrite = `I'm feeling stressed. Can we get clear on the next step and a timeline so we're aligned?`;
+      let rewrite = `I’m feeling ${emotion}. I don’t want to fight—can we slow down and talk about what we both need?`;
+      if (practicePerson === 'coworker') rewrite = `I’m feeling stressed. Can we get clear on the next step and a timeline so we’re aligned?`;
 
       return {
         translation: `Emotion: ${emotion}. Need: ${need}.`,
-        perfectResponse: rewrite,
+        perfectResponse: polishGroundedResponse(rewrite),
         summary: "You took the heat down and made a clear, calm request."
       };
     }
 
     async function copySelfDecodeRewrite() {
-      const text = (document.getElementById('selfdecode-rewrite')?.innerText || "").trim();
+      const rewriteEl = document.getElementById('selfdecode-rewrite');
+      const text = ((rewriteEl && rewriteEl.innerText) || "").trim();
       if (!text) return;
 
       const label = document.getElementById('copy-selfdecode-label');
@@ -2108,7 +2562,8 @@
     // QUICK COPY: Grounded Response
     // ============================
     async function copyPerfectResponse() {
-      const text = (document.getElementById('feedback-perfect')?.innerText || "").trim();
+      const perfectEl = document.getElementById('feedback-perfect');
+      const text = ((perfectEl && perfectEl.innerText) || "").trim();
       if (!text) return;
 
       const btn = document.getElementById('copy-perfect-btn');
