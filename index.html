@@ -1874,28 +1874,38 @@ Return JSON ONLY:
       processFeedbackAndMaybeWin(feedback, activeScenario.perfectResponse, currentTranslation);
     }
 
-    // GEMINI (✅ now uses protected server function)
-    function callGemini(prompt) {
-      return new Promise((resolve, reject) => {
-        google.script.run
-          .withSuccessHandler(resolve)
-          .withFailureHandler(err => {
-            reject(new Error(err && err.message ? err.message : String(err || "")));
-          })
-          .geminiGenerate(prompt);
+    // GEMINI (direct API call)
+    const GEMINI_API_KEY = 'AIzaSyClzJA527bmC1ruEyP-q71PpMtUVIAW0dI';
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    async function callGemini(prompt) {
+      const res = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
       });
+      if (!res.ok) throw new Error(`Gemini error ${res.status}`);
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     }
 
-    function callGeminiWithImage(prompt, imageDataUrl) {
+    async function callGeminiWithImage(prompt, imageDataUrl) {
       const parsed = parseDataUrlImage(imageDataUrl);
-      return new Promise((resolve, reject) => {
-        google.script.run
-          .withSuccessHandler(resolve)
-          .withFailureHandler(err => {
-            reject(new Error(err && err.message ? err.message : String(err || "")));
-          })
-          .geminiGenerateWithImage(prompt, parsed.imageBase64, parsed.mimeType);
+      const res = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: parsed.mimeType, data: parsed.imageBase64 } }
+            ]
+          }]
+        })
       });
+      if (!res.ok) throw new Error(`Gemini error ${res.status}`);
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     }
 
     function buildAIPersonaPrompt() {
