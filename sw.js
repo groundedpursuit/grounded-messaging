@@ -1,7 +1,5 @@
-const CACHE_NAME = 'grounded-messaging-v4';
-const ASSETS = [
-  './',
-  './index.html',
+const CACHE_NAME = 'grounded-messaging-v5';
+const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
@@ -9,7 +7,7 @@ const ASSETS = [
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
@@ -24,6 +22,13 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  // Always fetch HTML fresh from network
+  if (url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
+    event.respondWith(fetch(event.request).catch(() => caches.match('./index.html')));
+    return;
+  }
+  // Cache-first for static assets
   event.respondWith(
     caches.match(event.request).then(cached => cached || fetch(event.request))
   );
