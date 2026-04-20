@@ -1943,7 +1943,7 @@ Return JSON ONLY:
       ];
 
       document.getElementById('messages-container').innerHTML =
-        `<div class="text-center text-gray-400 text-xs font-medium my-4">Today 9:41 AM</div>`;
+        `<div class="text-center text-gray-400 text-xs font-medium my-4">${getChatTimeHeader(scenarioData)}</div>`;
       appendMessage('received', activeScenario.initialText);
 
       document.getElementById('chat-view').classList.remove('translate-x-full');
@@ -2108,6 +2108,15 @@ Return JSON ONLY:
     // GEMINI (direct API call)
     const GEMINI_API_KEY = 'AIzaSyDljcV1Eu_pxFA5keA83p4Qb6Dqf5u-oA4';
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    function getChatTimeHeader(scenario) {
+      const ts = (scenario && scenario.timestamp) || '';
+      if (/^\d+:\d+\s*(AM|PM)$/i.test(ts)) return 'Today ' + ts;
+      if (/^1\s*AM$/i.test(ts)) return 'Tonight 1:00 AM';
+      if (/^(Now|10m ago|2h ago)$/i.test(ts)) return 'Today';
+      if (/^(Yesterday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/i.test(ts)) return ts;
+      return 'Today';
+    }
 
     async function callGemini(prompt) {
       const res = await fetch(GEMINI_URL, {
