@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
   <title>Grounded Messaging</title>
   <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <meta name="theme-color" content="#1a1a2e" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -402,53 +403,55 @@
     </div>
 
     <!-- SETTINGS MODAL -->
-    <div id="settings-modal" class="hidden absolute inset-0 z-50 modal flex items-center justify-center p-6 fade-in">
-      <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl m-4">
+    <div id="settings-modal" class="hidden absolute inset-0 z-50 modal flex items-center justify-center p-4 fade-in">
+      <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl m-4 max-h-[85vh] overflow-y-auto">
         <h2 class="text-xl font-bold mb-4">Settings</h2>
 
-        <div class="mb-6">
+        <div class="mb-4">
           <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Practice With</label>
           <div class="grid grid-cols-2 gap-2">
-            <button onclick="setPracticePerson('wife')" id="btn-person-wife" class="py-3 text-sm font-bold rounded border bg-blue-100 border-blue-500 text-blue-700 transition-colors">Wife</button>
-            <button onclick="setPracticePerson('girlfriend')" id="btn-person-girlfriend" class="py-3 text-sm font-bold rounded border border-gray-300 text-gray-600 transition-colors">Girlfriend</button>
-            <button onclick="setPracticePerson('family')" id="btn-person-family" class="py-3 text-sm font-bold rounded border border-gray-300 text-gray-600 transition-colors">Family</button>
-            <button onclick="setPracticePerson('coworker')" id="btn-person-coworker" class="py-3 text-sm font-bold rounded border border-gray-300 text-gray-600 transition-colors">Coworker</button>
+            <button onclick="setPracticePerson('wife')" id="btn-person-wife" class="py-2 text-sm font-bold rounded border bg-blue-100 border-blue-500 text-blue-700 transition-colors">Wife</button>
+            <button onclick="setPracticePerson('girlfriend')" id="btn-person-girlfriend" class="py-2 text-sm font-bold rounded border border-gray-300 text-gray-600 transition-colors">Girlfriend</button>
+            <button onclick="setPracticePerson('family')" id="btn-person-family" class="py-2 text-sm font-bold rounded border border-gray-300 text-gray-600 transition-colors">Family</button>
+            <button onclick="setPracticePerson('coworker')" id="btn-person-coworker" class="py-2 text-sm font-bold rounded border border-gray-300 text-gray-600 transition-colors">Coworker</button>
           </div>
         </div>
 
-
-        <div class="mb-6">
+        <div class="mb-4">
           <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Other Person Persona</label>
           <div class="grid grid-cols-2 gap-2">
-            <button onclick="setPersona('pursuer')" id="btn-pursuer" class="py-3 text-sm font-bold rounded border bg-blue-100 border-blue-500 text-blue-700 transition-colors">Pursuer</button>
-            <button onclick="setPersona('withdrawer')" id="btn-withdrawer" class="py-3 text-sm font-bold rounded border border-gray-300 text-gray-600 transition-colors">Withdrawer</button>
+            <button onclick="setPersona('pursuer')" id="btn-pursuer" class="py-2 text-sm font-bold rounded border bg-blue-100 border-blue-500 text-blue-700 transition-colors">Pursuer</button>
+            <button onclick="setPersona('withdrawer')" id="btn-withdrawer" class="py-2 text-sm font-bold rounded border border-gray-300 text-gray-600 transition-colors">Withdrawer</button>
           </div>
-          <p class="text-gray-500 text-xs mt-2 leading-snug">
+          <p class="text-gray-500 text-xs mt-1 leading-snug">
             Pursuer = comes in hot and wants contact. Withdrawer = shuts down and wants space.
           </p>
         </div>
 
-        <div class="mb-6">
+        <div class="mb-4">
           <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Self Decode</label>
-          <button onclick="document.getElementById('settings-modal').classList.add('hidden'); openSelfDecodeView();" class="w-full py-3 text-sm font-semibold rounded border border-gray-300 text-gray-600 bg-white transition-colors active:bg-gray-50">
+          <button onclick="document.getElementById('settings-modal').classList.add('hidden'); openSelfDecodeView();" class="w-full py-2 text-sm font-semibold rounded border border-gray-300 text-gray-600 bg-white transition-colors active:bg-gray-50">
             Input your own raw message to process
           </button>
         </div>
 
-        <div class="mb-6">
+        <div class="mb-4">
           <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Feedback</label>
-          <div class="flex items-center justify-between py-2">
+          <div class="flex items-center justify-between py-1">
             <span class="text-sm font-semibold text-gray-700">Show Grounded Response</span>
-            <button id="toggle-grounded" onclick="toggleGroundedResponse()"
-              class="relative w-12 h-6 rounded-full transition-colors bg-blue-500"
-              aria-label="Toggle grounded response">
-              <span id="toggle-grounded-knob" class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform translate-x-6"></span>
-            </button>
+            <div class="flex rounded-lg overflow-hidden border border-gray-200" style="font-size:13px">
+              <button id="toggle-grounded-off" onclick="setGroundedResponse(false)"
+                class="px-3 py-1 font-semibold transition-colors"
+                style="background:#e5e7eb;color:#6b7280">OFF</button>
+              <button id="toggle-grounded-on" onclick="setGroundedResponse(true)"
+                class="px-3 py-1 font-semibold transition-colors"
+                style="background:#3b82f6;color:#fff">ON</button>
+            </div>
           </div>
         </div>
 
         <div class="flex gap-2">
-          <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="flex-1 py-3 bg-gray-100 rounded-lg font-semibold text-gray-700">Close</button>
+          <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="flex-1 py-2 bg-gray-100 rounded-lg font-semibold text-gray-700">Close</button>
         </div>
 
       </div>
@@ -2813,16 +2816,23 @@ Return JSON ONLY:
       applyGroundedVisibility();
     }
 
+    function setGroundedResponse(val) {
+      showGroundedResponse = val;
+      localStorage.setItem('showGroundedResponse', val ? '1' : '0');
+      updateGroundedToggleUI();
+      applyGroundedVisibility();
+    }
+
     function updateGroundedToggleUI() {
-      const btn = document.getElementById('toggle-grounded');
-      const knob = document.getElementById('toggle-grounded-knob');
-      if (!btn || !knob) return;
+      const onBtn = document.getElementById('toggle-grounded-on');
+      const offBtn = document.getElementById('toggle-grounded-off');
+      if (!onBtn || !offBtn) return;
       if (showGroundedResponse) {
-        btn.classList.remove('bg-gray-300'); btn.classList.add('bg-blue-500');
-        knob.classList.remove('translate-x-0'); knob.classList.add('translate-x-6');
+        onBtn.style.background = '#3b82f6'; onBtn.style.color = '#fff';
+        offBtn.style.background = '#e5e7eb'; offBtn.style.color = '#6b7280';
       } else {
-        btn.classList.remove('bg-blue-500'); btn.classList.add('bg-gray-300');
-        knob.classList.remove('translate-x-6'); knob.classList.add('translate-x-0');
+        offBtn.style.background = '#374151'; offBtn.style.color = '#fff';
+        onBtn.style.background = '#e5e7eb'; onBtn.style.color = '#6b7280';
       }
     }
 
