@@ -1538,6 +1538,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
 
     // ONLOAD
     window.onload = function() {
+      history.pushState({ app: true }, '');
       setPracticePersonUI(practicePerson);
       setPersonaUI(wifePersona);
 
@@ -1547,6 +1548,31 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
 
       startMainAppOnce();
     };
+
+    window.addEventListener('popstate', function() {
+      history.pushState({ app: true }, '');
+
+      const allwon = document.getElementById('allwon-modal');
+      if (allwon && !allwon.classList.contains('hidden')) { closeAllWonModal(); return; }
+
+      const feedback = document.getElementById('feedback-overlay');
+      if (feedback && !feedback.classList.contains('hidden')) { closeFeedback(); return; }
+
+      const help = document.getElementById('help-modal');
+      if (help && !help.classList.contains('hidden')) { closeHelp(); return; }
+
+      const settings = document.getElementById('settings-modal');
+      if (settings && !settings.classList.contains('hidden')) { settings.classList.add('hidden'); return; }
+
+      const custom = document.getElementById('custom-modal');
+      if (custom && !custom.classList.contains('hidden')) { closeCustomScenarioModal(); return; }
+
+      const selfdecode = document.getElementById('selfdecode-view');
+      if (selfdecode && !selfdecode.classList.contains('translate-x-full')) { closeSelfDecodeView(); return; }
+
+      const chat = document.getElementById('chat-view');
+      if (chat && !chat.classList.contains('translate-x-full')) { goBack(); return; }
+    });
 
     // SETTINGS: Practice With
     function setPracticePerson(p) {
