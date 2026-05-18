@@ -15,7 +15,7 @@ function doGet(e) {
       return ContentService.createTextOutput(output2).setMimeType(mime2);
     }
   }
-  return HtmlService.createHtmlOutputFromFile('Index')
+  return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Grounded Text Simulator (Offline)')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
