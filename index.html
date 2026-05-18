@@ -1952,7 +1952,7 @@ Return JSON ONLY:
         throw new Error("No input provided.");
       }
 
-      const json = JSON.parse(cleanJson(response));
+      const json = parseGeminiJson(response);
       return normalizeCustomDecode(json, rawText);
     }
 
@@ -2215,7 +2215,7 @@ Return valid JSON ONLY:
 
       try {
         const response = await callGemini(systemPrompt);
-        let json = JSON.parse(cleanJson(response));
+        let json = parseGeminiJson(response);
         if (!json.grade) json.grade = 'yellow';
 
         lastGrade = String(json.grade).toLowerCase();
@@ -2276,7 +2276,7 @@ ${behaviorGuide}`;
 
       try {
         const response = await callGemini(systemPrompt);
-        const json = JSON.parse(cleanJson(response));
+        const json = parseGeminiJson(response);
         const replyText = json.reply || "…";
         currentTranslation = json.translation || currentTranslation;
 
@@ -2315,7 +2315,57 @@ ${behaviorGuide}`;
 
     function cleanJson(text) {
       if (!text) return "{}";
-      return text.replace(/```json/g, '').replace(/```/g, '').trim();
+      let out = String(text).replace(/```json/gi, '').replace(/```/g, '').trim();
+      const firstBrace = out.indexOf('{');
+      const lastBrace = out.lastIndexOf('}');
+      if (firstBrace >= 0 && lastBrace > firstBrace) out = out.slice(firstBrace, lastBrace + 1);
+      return out.trim();
+    }
+
+    function parseGeminiJson(text, defaults = {}) {
+      const cleaned = cleanJson(text);
+      try {
+        return JSON.parse(cleaned);
+      } catch (err) {
+        const recovered = Object.assign({}, defaults);
+        [
+          "grade", "title", "message", "perfectResponse", "translation", "reply",
+          "theirLatestMessage", "theme", "theirEmotionNeed", "yourEmotionNeed",
+          "groundedOpener", "summary"
+        ].forEach(key => {
+          const value = extractJsonStringValue(cleaned, key);
+          if (value) recovered[key] = value;
+        });
+
+        if (Object.keys(recovered).length > Object.keys(defaults).length) {
+          console.warn("Recovered partial Gemini JSON", err);
+          return recovered;
+        }
+
+        throw err;
+      }
+    }
+
+    function extractJsonStringValue(text, key) {
+      const source = String(text || "");
+      const safeKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const closed = source.match(new RegExp(`"${safeKey}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`, "i"));
+      const rawValue = closed
+        ? closed[1]
+        : (source.match(new RegExp(`"${safeKey}"\\s*:\\s*"([\\s\\S]*)$`, "i")) || [])[1];
+
+      if (!rawValue) return "";
+
+      const trimmed = rawValue
+        .replace(/\s*[,}]\s*$/g, '')
+        .replace(/^["']+|["']+$/g, '')
+        .trim();
+
+      try {
+        return JSON.parse(`"${trimmed.replace(/"/g, '\\"')}"`).trim();
+      } catch (e) {
+        return trimmed;
+      }
     }
 
     function applyInitialDecoderResult(decoded, fallbackText) {
@@ -2384,7 +2434,7 @@ Return JSON ONLY:
 }`;
 
         const response = await callGemini(prompt);
-        const json = JSON.parse(cleanJson(response));
+        const json = parseGeminiJson(response);
         applyInitialDecoderResult(json, wifeText);
 
       } catch (e) {
@@ -2786,7 +2836,7 @@ Return JSON ONLY:
 }`;
 
       const response = await callGemini(prompt);
-      const json = JSON.parse(cleanJson(response));
+      const json = parseGeminiJson(response);
       return {
         translation: json.translation,
         perfectResponse: polishGroundedResponse(json.perfectResponse),
