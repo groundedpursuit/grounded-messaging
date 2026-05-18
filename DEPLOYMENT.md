@@ -16,7 +16,7 @@ Add these environment secrets to `production`:
 The workflow keeps redeploying the current Apps Script web app deployment:
 
 ```text
-AKfycby0XVyzkqiByk5BBHlMma-ddOCPtaVlg-w2VirCFSXB2fDcr7FNe_gkCJ85EiC-AMSh
+AKfycbx1XGb3k8fu2xjnvYDIC0ovHELOrUeo2P8M4gV7v6zXdrgu9AFvZa0pvKXKFaf3liazvg
 ```
 
 ## Deployment Flow
