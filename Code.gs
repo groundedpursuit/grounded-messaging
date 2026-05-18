@@ -28,7 +28,7 @@ function callGeminiProxy(prompt) {
   var response = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    payload: JSON.stringify(buildGeminiPayload(prompt)),
     muteHttpExceptions: true
   });
   var code = response.getResponseCode();
@@ -37,6 +37,30 @@ function callGeminiProxy(prompt) {
   return (data.candidates && data.candidates[0] && data.candidates[0].content &&
           data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
           data.candidates[0].content.parts[0].text) || '';
+}
+
+function buildGeminiPayload(prompt, imagePart) {
+  var parts = [{ text: prompt }];
+  if (imagePart) parts.push(imagePart);
+
+  var generationConfig = {
+    temperature: 0.25,
+    topP: 0.8,
+    maxOutputTokens: 420
+  };
+
+  if (expectsJsonResponse(prompt)) {
+    generationConfig.responseMimeType = 'application/json';
+  }
+
+  return {
+    contents: [{ parts: parts }],
+    generationConfig: generationConfig
+  };
+}
+
+function expectsJsonResponse(prompt) {
+  return /return\s+(valid\s+)?json\s+only/i.test(String(prompt || ''));
 }
 
 function setGeminiApiKeyFromCi(apiKey) {
@@ -54,9 +78,7 @@ function callGeminiWithImageProxy(prompt, mimeType, imageBase64) {
   var response = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }]
-    }),
+    payload: JSON.stringify(buildGeminiPayload(prompt, { inline_data: { mime_type: mimeType, data: imageBase64 } })),
     muteHttpExceptions: true
   });
   var code = response.getResponseCode();
