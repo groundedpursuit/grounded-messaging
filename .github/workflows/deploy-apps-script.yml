@@ -10,7 +10,6 @@ on:
       - index.html
       - manifest.json
       - privacy-policy.html
-      - sw.js
       - icon-192.png
       - icon-512.png
       - .github/workflows/deploy-apps-script.yml
@@ -65,7 +64,7 @@ jobs:
         run: |
           rm -rf gas-dist
           mkdir gas-dist
-          cp Code.gs appsscript.json index.html manifest.json privacy-policy.html sw.js icon-192.png icon-512.png gas-dist/
+          cp Code.gs appsscript.json index.html manifest.json privacy-policy.html icon-192.png icon-512.png gas-dist/
           node -e "const fs = require('fs'); fs.writeFileSync('gas-dist/.clasp.json', JSON.stringify({ scriptId: process.env.GAS_SCRIPT_ID, rootDir: '.' }, null, 2));"
 
       - name: Push Apps Script source
