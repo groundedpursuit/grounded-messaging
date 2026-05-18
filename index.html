@@ -2134,20 +2134,27 @@ Return JSON ONLY:
       processFeedbackAndMaybeWin(feedback, activeScenario.perfectResponse, currentTranslation);
     }
 
-    // GEMINI (via GAS server-side proxy — key stored in Script Properties, never in code)
+    // GEMINI (via GAS server-side proxy — JSONP avoids CORS/redirect restrictions)
     const GAS_PROXY_URL = 'https://script.google.com/macros/s/1Idm0IpgCQbfgvHutUKLVracyH8cjhzH2Fg0v9rD-JQy1QyQQviHc8x5A/exec';
 
-    async function callGemini(prompt) {
-      const url = GAS_PROXY_URL + '?action=gemini&prompt=' + encodeURIComponent(prompt);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Proxy error ' + res.status);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.text;
+    function callGemini(prompt) {
+      return new Promise(function(resolve, reject) {
+        const cbName = 'gc_' + Date.now();
+        const script = document.createElement('script');
+        const cleanup = () => { delete window[cbName]; script.remove(); };
+        window[cbName] = function(data) {
+          cleanup();
+          if (data.error) reject(new Error(data.error));
+          else resolve(data.text);
+        };
+        script.onerror = function() { cleanup(); reject(new Error('Network error')); };
+        script.src = GAS_PROXY_URL + '?action=gemini&callback=' + cbName + '&prompt=' + encodeURIComponent(prompt);
+        document.head.appendChild(script);
+      });
     }
 
     async function callGeminiWithImage(prompt, imageDataUrl) {
-      // Image proxy not supported via external fetch — falls back to keyword grading
+      // Image proxy not supported via JSONP — falls back to keyword grading
       throw new Error('Image analysis requires direct API access.');
     }
 

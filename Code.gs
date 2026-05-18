@@ -2,11 +2,17 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.action === 'gemini') {
     try {
       var text = callGeminiProxy(e.parameter.prompt || '');
-      return ContentService.createTextOutput(JSON.stringify({ text: text }))
-        .setMimeType(ContentService.MimeType.JSON);
+      var payload = JSON.stringify({ text: text });
+      var cb = e.parameter.callback;
+      var output = cb ? cb + '(' + payload + ')' : payload;
+      var mime = cb ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON;
+      return ContentService.createTextOutput(output).setMimeType(mime);
     } catch(err) {
-      return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
-        .setMimeType(ContentService.MimeType.JSON);
+      var errPayload = JSON.stringify({ error: err.message });
+      var cb2 = e.parameter.callback;
+      var output2 = cb2 ? cb2 + '(' + errPayload + ')' : errPayload;
+      var mime2 = cb2 ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON;
+      return ContentService.createTextOutput(output2).setMimeType(mime2);
     }
   }
   return HtmlService.createHtmlOutputFromFile('Index')
