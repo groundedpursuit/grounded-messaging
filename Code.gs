@@ -39,6 +39,14 @@ function callGeminiProxy(prompt) {
           data.candidates[0].content.parts[0].text) || '';
 }
 
+function setGeminiApiKeyFromCi(apiKey) {
+  var value = String(apiKey || '').trim();
+  if (!value) throw new Error('GEMINI_API_KEY value is required.');
+
+  PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', value);
+  return { ok: true, property: 'GEMINI_API_KEY' };
+}
+
 function callGeminiWithImageProxy(prompt, mimeType, imageBase64) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY not set in Script Properties.');
