@@ -46,7 +46,7 @@ function buildGeminiPayload(prompt, imagePart) {
   var generationConfig = {
     temperature: 0.25,
     topP: 0.8,
-    maxOutputTokens: 420
+    maxOutputTokens: 700
   };
 
   if (expectsJsonResponse(prompt)) {
