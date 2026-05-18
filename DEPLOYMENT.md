@@ -28,7 +28,7 @@ During deployment, GitHub Actions:
 1. Installs `@google/clasp`.
 2. Writes `CLASPRC_JSON` to the runner only.
 3. Generates `.clasp.json` from `GAS_SCRIPT_ID` in a temporary deploy folder.
-4. Pushes the Apps Script source.
+4. Pushes the Apps Script source, excluding browser-only JavaScript such as `sw.js`.
 5. Runs `setGeminiApiKeyFromCi` to store `GEMINI_API_KEY` in Script Properties.
 6. Redeploys the existing web app deployment.
 
