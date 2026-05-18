@@ -2134,9 +2134,22 @@ Return JSON ONLY:
       processFeedbackAndMaybeWin(feedback, activeScenario.perfectResponse, currentTranslation);
     }
 
-    // GEMINI (direct API call)
-    const GEMINI_API_KEY = '';
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // GEMINI (via GAS server-side proxy — key stored in Script Properties, never in code)
+    const GAS_PROXY_URL = 'https://script.google.com/macros/s/1Idm0IpgCQbfgvHutUKLVracyH8cjhzH2Fg0v9rD-JQy1QyQQviHc8x5A/exec';
+
+    async function callGemini(prompt) {
+      const url = GAS_PROXY_URL + '?action=gemini&prompt=' + encodeURIComponent(prompt);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Proxy error ' + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data.text;
+    }
+
+    async function callGeminiWithImage(prompt, imageDataUrl) {
+      // Image proxy not supported via external fetch — falls back to keyword grading
+      throw new Error('Image analysis requires direct API access.');
+    }
 
     function getChatTimeHeader(scenario) {
       const ts = (scenario && scenario.timestamp) || '';
@@ -2145,36 +2158,6 @@ Return JSON ONLY:
       if (/^(Now|10m ago|2h ago)$/i.test(ts)) return 'Today';
       if (/^(Yesterday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/i.test(ts)) return ts;
       return 'Today';
-    }
-
-    async function callGemini(prompt) {
-      const res = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      });
-      if (!res.ok) throw new Error(`Gemini error ${res.status}`);
-      const data = await res.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    }
-
-    async function callGeminiWithImage(prompt, imageDataUrl) {
-      const parsed = parseDataUrlImage(imageDataUrl);
-      const res = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inline_data: { mime_type: parsed.mimeType, data: parsed.imageBase64 } }
-            ]
-          }]
-        })
-      });
-      if (!res.ok) throw new Error(`Gemini error ${res.status}`);
-      const data = await res.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     }
 
     function buildAIPersonaPrompt() {
