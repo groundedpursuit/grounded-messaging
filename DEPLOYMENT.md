@@ -10,12 +10,13 @@ Add these environment secrets to `production`:
 
 - `GEMINI_API_KEY`: the Gemini API key.
 - `GAS_SCRIPT_ID`: the Google Apps Script project ID.
+- `GAS_DEPLOYMENT_ID`: the existing Apps Script web app deployment ID.
 - `CLASPRC_JSON`: the contents of the clasp credentials file from `~/.clasprc.json`.
 
-The workflow keeps using the current public Apps Script deployment ID from the web app URL:
+The workflow keeps redeploying the current Apps Script web app deployment:
 
 ```text
-AKfycbx1XGb3k8fu2xjnvYDIC0ovHELOrUeo2P8M4gV7v6zXdrgu9AFvZa0pvKXKFaf3liazvg
+AKfycby0XVyzkqiByk5BBHlMma-ddOCPtaVlg-w2VirCFSXB2fDcr7FNe_gkCJ85EiC-AMSh
 ```
 
 ## Deployment Flow

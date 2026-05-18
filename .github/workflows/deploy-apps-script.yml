@@ -28,8 +28,6 @@ jobs:
     name: Deploy production Apps Script
     runs-on: ubuntu-latest
     environment: production
-    env:
-      GAS_DEPLOYMENT_ID: AKfycbx1XGb3k8fu2xjnvYDIC0ovHELOrUeo2P8M4gV7v6zXdrgu9AFvZa0pvKXKFaf3liazvg
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -45,10 +43,12 @@ jobs:
       - name: Validate deployment secrets
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
           GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           : "${CLASPRC_JSON:?CLASPRC_JSON secret is required}"
+          : "${GAS_DEPLOYMENT_ID:?GAS_DEPLOYMENT_ID secret is required}"
           : "${GAS_SCRIPT_ID:?GAS_SCRIPT_ID secret is required}"
           : "${GEMINI_API_KEY:?GEMINI_API_KEY secret is required}"
 
@@ -82,4 +82,6 @@ jobs:
 
       - name: Redeploy web app
         working-directory: gas-dist
+        env:
+          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}
         run: clasp deploy --deploymentId "$GAS_DEPLOYMENT_ID" --description "GitHub Actions ${GITHUB_SHA}"
