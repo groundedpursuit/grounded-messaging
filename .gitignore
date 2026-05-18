@@ -1,0 +1,6 @@
+.clasp.json
+.clasprc.json
+gas-dist/
+node_modules/
+npm-debug.log*
+.DS_Store

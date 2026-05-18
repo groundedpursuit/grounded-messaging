@@ -1,0 +1,85 @@
+name: Deploy Apps Script
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - Code.gs
+      - appsscript.json
+      - index.html
+      - manifest.json
+      - privacy-policy.html
+      - sw.js
+      - icon-192.png
+      - icon-512.png
+      - .github/workflows/deploy-apps-script.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apps-script-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy production Apps Script
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      GAS_DEPLOYMENT_ID: AKfycbx1XGb3k8fu2xjnvYDIC0ovHELOrUeo2P8M4gV7v6zXdrgu9AFvZa0pvKXKFaf3liazvg
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install clasp
+        run: npm install --global @google/clasp@3.3.0
+
+      - name: Validate deployment secrets
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          : "${CLASPRC_JSON:?CLASPRC_JSON secret is required}"
+          : "${GAS_SCRIPT_ID:?GAS_SCRIPT_ID secret is required}"
+          : "${GEMINI_API_KEY:?GEMINI_API_KEY secret is required}"
+
+      - name: Configure clasp credentials
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          chmod 600 "$HOME/.clasprc.json"
+
+      - name: Prepare Apps Script deploy directory
+        env:
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+        run: |
+          rm -rf gas-dist
+          mkdir gas-dist
+          cp Code.gs appsscript.json index.html manifest.json privacy-policy.html sw.js icon-192.png icon-512.png gas-dist/
+          node -e "const fs = require('fs'); fs.writeFileSync('gas-dist/.clasp.json', JSON.stringify({ scriptId: process.env.GAS_SCRIPT_ID, rootDir: '.' }, null, 2));"
+
+      - name: Push Apps Script source
+        working-directory: gas-dist
+        run: clasp push --force
+
+      - name: Store Gemini API key in Script Properties
+        working-directory: gas-dist
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          PARAMS="$(node -e "process.stdout.write(JSON.stringify([process.env.GEMINI_API_KEY]))")"
+          clasp run setGeminiApiKeyFromCi --params "$PARAMS"
+
+      - name: Redeploy web app
+        working-directory: gas-dist
+        run: clasp deploy --deploymentId "$GAS_DEPLOYMENT_ID" --description "GitHub Actions ${GITHUB_SHA}"
