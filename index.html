@@ -2256,6 +2256,8 @@ Return valid JSON ONLY:
     async function generateReplyWithGemini() {
       const personaPrompt = buildRoleplayPrompt();
       const role = practicePerson;
+      const lastOtherMessage = [...chatHistory].reverse().find(m => m.role === 'model');
+      const lastUserMessage = [...chatHistory].reverse().find(m => m.role === 'user');
 
       const behaviorGuide =
 `Conversation rules:
@@ -2265,13 +2267,15 @@ Return valid JSON ONLY:
 - If LAST_GRADE is YELLOW: the person stays tense but a little open.
 - If LAST_GRADE is RED: the person escalates some.
 - If role is COWORKER: stay professional (no insults, no slurs, no abuse).
-Return JSON ONLY: { "reply": "...", "translation": "hidden emotion/need (1 sentence)" }`;
+Return valid JSON only:
+{ "reply": "next message from the other person", "translation": "hidden emotion/need" }`;
 
       const systemPrompt =
 `${personaPrompt}
 ROLE: ${role.toUpperCase()}
 LAST_GRADE: ${lastGrade}
-HISTORY: ${JSON.stringify(chatHistory)}
+OTHER_PERSON_LAST_MESSAGE: "${(lastOtherMessage && lastOtherMessage.text) || ""}"
+USER_LAST_REPLY: "${(lastUserMessage && lastUserMessage.text) || ""}"
 ${behaviorGuide}`;
 
       try {
