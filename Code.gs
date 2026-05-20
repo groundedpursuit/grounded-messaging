@@ -22,17 +22,12 @@ function doGet(e) {
 }
 
 function callGeminiProxy(prompt, tier) {
-  var apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set in Script Properties.');
-  var model = getGeminiModelForTier(tier);
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
-  var response = UrlFetchApp.fetch(url, {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(buildGeminiPayload(prompt, null, tier)),
-    muteHttpExceptions: true
-  });
+  var response = fetchGeminiText(prompt, tier);
   var code = response.getResponseCode();
+  if (isFastTier(tier) && (code === 429 || code === 503)) {
+    response = fetchGeminiText(prompt, 'standard');
+    code = response.getResponseCode();
+  }
   if (code !== 200) throw new Error('Gemini error ' + code + ': ' + response.getContentText());
   var data = JSON.parse(response.getContentText());
   return (data.candidates && data.candidates[0] && data.candidates[0].content &&
@@ -40,10 +35,27 @@ function callGeminiProxy(prompt, tier) {
           data.candidates[0].content.parts[0].text) || '';
 }
 
+function fetchGeminiText(prompt, tier) {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!apiKey) throw new Error('GEMINI_API_KEY not set in Script Properties.');
+  var model = getGeminiModelForTier(tier);
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+  return UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(buildGeminiPayload(prompt, null, tier)),
+    muteHttpExceptions: true
+  });
+}
+
 function getGeminiModelForTier(tier) {
-  return String(tier || '').toLowerCase() === 'fast'
+  return isFastTier(tier)
     ? 'gemini-2.5-flash-lite'
     : 'gemini-2.5-flash';
+}
+
+function isFastTier(tier) {
+  return String(tier || '').toLowerCase() === 'fast';
 }
 
 function buildGeminiPayload(prompt, imagePart, tier) {
@@ -55,7 +67,7 @@ function buildGeminiPayload(prompt, imagePart, tier) {
     topP: 0.8
   };
 
-  if (String(tier || '').toLowerCase() === 'fast' && !imagePart) {
+  if (isFastTier(tier) && !imagePart) {
     generationConfig.thinkingConfig = { thinkingBudget: 0 };
   }
 
