@@ -2358,17 +2358,42 @@ Return JSON ONLY:
       const role = practicePerson;
       if (role === 'coworker') {
         return wifePersona === 'pursuer'
-          ? "Coworker is direct and persistent. Pushes for clarity and timelines when stressed."
-          : "Coworker is reserved and brief. Withdraws when overwhelmed and prefers concise updates.";
+          ? "Coworker is a pursuer/direct style: stressed by ambiguity, presses for status, timelines, accountability, and clear next steps while staying professional."
+          : "Coworker is a withdrawer/reserved style: stressed by pressure, gets brief or guarded, wants space to think, and prefers concise, practical updates.";
       }
       if (role === 'family') {
         return wifePersona === 'pursuer'
-          ? "Family member is anxious/pursuer. Gets intense when they feel ignored and wants contact."
-          : "Family member is avoidant/withdrawer. Gets quiet when overwhelmed and wants space.";
+          ? "Family member is a pursuer/anxious style: gets more intense when they feel ignored, wants contact, reassurance, and proof the relationship still matters."
+          : "Family member is a withdrawer/avoidant style: gets quiet or guarded when overwhelmed, wants respect, room to breathe, and no pressure to explain instantly.";
+      }
+      if (role === 'girlfriend') {
+        return wifePersona === 'pursuer'
+          ? "Girlfriend is a pursuer/anxious style: reads distance as disinterest, asks for reassurance, consistency, and visible care."
+          : "Girlfriend is a withdrawer/avoidant style: pulls back when pressured, protects herself with short replies, and needs calm, non-demanding connection.";
       }
       return wifePersona === 'pursuer'
-        ? "Partner is Anxious/Pursuer. Needs reassurance and connection."
-        : "Partner is Avoidant/Withdrawer. Needs space and calm.";
+        ? "Wife is a pursuer/anxious style: escalates when she feels alone, wants reassurance, teamwork, and proof she matters."
+        : "Wife is a withdrawer/avoidant style: goes quiet or distant when flooded, wants calm, space, respect, and no chasing.";
+    }
+
+    function buildPersonaReplyRules(otherPerson) {
+      const contextRules = {
+        coworker: "- Coworker context: keep it workplace-appropriate, specific to the task, and emotionally contained. Conflict should sound like pressure for alignment, trust, timelines, or workload clarity.",
+        family: "- Family context: make it about belonging, respect, loyalty, old patterns, contact, or feeling judged/left out.",
+        girlfriend: "- Girlfriend context: make it about reassurance, consistency, closeness, feeling chosen, or fear of disconnection.",
+        wife: "- Wife context: make it about partnership, home/teamwork, emotional safety, feeling prioritized, or carrying things alone."
+      };
+      const styleRules = wifePersona === 'pursuer'
+        ? "- Pursuer style: the next text can press, ask again, protest, seek reassurance, or name the hurt more directly. A good user reply may lower the heat, but the person should not become instantly calm or perfectly grounded."
+        : "- Withdrawer style: the next text can be brief, cautious, distant, self-protective, or ask for space/time. A good user reply may make them a little more open, but they should not suddenly over-explain or sound like a coach.";
+
+      return `OTHER PERSON REPLY STYLE:
+- The nextReply is from the ${otherPerson}, not from the user and not from a coach.
+- Keep the other person true to the selected pursuer/withdrawer style. They can be imperfect, guarded, anxious, pressured, or hurt.
+- Do not make nextReply sound like "The Grounded Response." Save calm repair language for perfectResponse only.
+${styleRules}
+${contextRules[practicePerson] || contextRules.wife}
+- Avoid abusive language, slurs, threats, or cartoon villain lines. Realistic pressure is okay; cruelty is not.`;
     }
 
     function truncateForPrompt(text, max = 220) {
@@ -2439,11 +2464,11 @@ GRADING RULES:
 
 NEXT REPLY RULES:
 - Write at an 8th grade reading level, like a real text, 1-2 sentences.
-- If grade is GREEN: the ${otherPerson} softens and moves toward repair.
-- If grade is YELLOW: the ${otherPerson} stays tense but a little open.
-- If grade is RED: the ${otherPerson} escalates some, but do not use abusive language.
-- Coworker replies must stay professional and specific.
+- If grade is GREEN: reduce intensity one notch, but keep the ${otherPerson}'s real pursuer/withdrawer style.
+- If grade is YELLOW: keep tension active and only slightly open.
+- If grade is RED: increase tension, but do not use abusive language.
 - The next reply must respond to details from the recent transcript when possible.
+${buildPersonaReplyRules(otherPerson)}
 
 Return valid JSON ONLY:
 {
@@ -2497,17 +2522,22 @@ Return valid JSON ONLY:
       const role = practicePerson;
       if (role === 'coworker') {
         return wifePersona === 'pursuer'
-          ? "Roleplay: A direct coworker who is stressed and needs clarity. Keeps it professional."
-          : "Roleplay: A reserved coworker who is overwhelmed. Keeps it professional and brief.";
+          ? "Roleplay the coworker as direct/pursuer: stressed by ambiguity, pushing for status, timelines, ownership, and clarity while staying professional."
+          : "Roleplay the coworker as reserved/withdrawer: overwhelmed by pressure, brief, guarded, practical, and needing space to think before committing.";
       }
       if (role === 'family') {
         return wifePersona === 'pursuer'
-          ? "Roleplay: An anxious family member. Escalates when they feel ignored and softens when they feel understood."
-          : "Roleplay: An avoidant family member. Withdraws when overwhelmed and softens when they feel safe and not pressured.";
+          ? "Roleplay the family member as anxious/pursuer: intensified by feeling ignored, wanting contact, reassurance, respect, and proof the bond matters."
+          : "Roleplay the family member as avoidant/withdrawer: guarded when overwhelmed, wanting space, respect, and less pressure.";
+      }
+      if (role === 'girlfriend') {
+        return wifePersona === 'pursuer'
+          ? "Roleplay the girlfriend as anxious/pursuer: worried by distance, asking for reassurance, consistency, closeness, and signs she is chosen."
+          : "Roleplay the girlfriend as avoidant/withdrawer: self-protective, short when pressured, needing calm, space, and non-demanding connection.";
       }
       return wifePersona === 'pursuer'
-        ? "Roleplay: An anxious partner. Escalates when they feel unseen, and softens when they feel understood."
-        : "Roleplay: An avoidant partner. Withdraws when overwhelmed, and softens when they feel safe and not pressured.";
+        ? "Roleplay the wife as anxious/pursuer: upset when she feels alone, pressing for reassurance, teamwork, priority, and proof she matters."
+        : "Roleplay the wife as avoidant/withdrawer: quiet or distant when flooded, needing calm, space, respect, and no chasing.";
     }
 
     async function generateReplyWithGemini() {
@@ -2519,11 +2549,12 @@ Return valid JSON ONLY:
 - Use English only. "translation" means hidden emotion/need, not another language.
 - Write at an 8th grade reading level.
 - Keep it like texting (1–2 sentences).
-- If LAST_GRADE is GREEN: the person calms down and softens.
-- If LAST_GRADE is YELLOW: the person stays tense but a little open.
-- If LAST_GRADE is RED: the person escalates some.
-- If role is COWORKER: stay professional (no insults, no slurs, no abuse).
+- If LAST_GRADE is GREEN: lower intensity one notch, but keep the person true to their pursuer/withdrawer style.
+- If LAST_GRADE is YELLOW: keep tension active and only slightly open.
+- If LAST_GRADE is RED: increase tension without insults, slurs, threats, or abuse.
+- Do not make the other person's reply sound like the user's grounded rewrite or like a therapist.
 - Respond to the recent transcript, not only the last message.
+${buildPersonaReplyRules(getPersonNoun())}
 Return valid JSON only:
 { "reply": "next message from the other person", "translation": "hidden emotion/need" }`;
 
