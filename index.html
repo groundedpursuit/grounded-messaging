@@ -2411,6 +2411,7 @@ ${buildRoleplayPrompt()}
 ${philVoicePrompt()}
 
 You are running a texting practice turn. Use the whole recent transcript, not only the last message.
+Use English only. In this app, "translation" means hidden emotion/need, not translation into another language.
 
 TASKS:
 1. Grade the USER's latest reply.
@@ -2515,6 +2516,7 @@ Return valid JSON ONLY:
 
       const behaviorGuide =
 `Conversation rules:
+- Use English only. "translation" means hidden emotion/need, not another language.
 - Write at an 8th grade reading level.
 - Keep it like texting (1–2 sentences).
 - If LAST_GRADE is GREEN: the person calms down and softens.
