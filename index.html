@@ -1567,7 +1567,6 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
     let chatHistory = [];
     let lastReplyText = "";
     let overlayMode = "analysis"; // "analysis" | "decoder"
-    let preloadedNextReply = null;
     let aiTurnRequestId = 0;
 
     // STRIKES + WIN STATE
@@ -1586,16 +1585,10 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
       scenarioWon = false;
       pendingWin = false;
       pendingWinPerfect = "";
-      clearPreloadedNextReply();
-    }
-
-    function clearPreloadedNextReply() {
-      preloadedNextReply = null;
     }
 
     function nextAITurnRequestId() {
       aiTurnRequestId += 1;
-      clearPreloadedNextReply();
       return aiTurnRequestId;
     }
 
@@ -2388,9 +2381,9 @@ Return JSON ONLY:
         : "- Withdrawer style: the next text can be brief, cautious, distant, self-protective, or ask for space/time. A good user reply may make them a little more open, but they should not suddenly over-explain or sound like a coach.";
 
       return `OTHER PERSON REPLY STYLE:
-- The nextReply is from the ${otherPerson}, not from the user and not from a coach.
+- The reply is from the ${otherPerson}, not from the user and not from a coach.
 - Keep the other person true to the selected pursuer/withdrawer style. They can be imperfect, guarded, anxious, pressured, or hurt.
-- Do not make nextReply sound like "The Grounded Response." Save calm repair language for perfectResponse only.
+- Do not make the reply sound like "The Grounded Response." Save calm repair language for perfectResponse only.
 ${styleRules}
 ${contextRules[practicePerson] || contextRules.wife}
 - Avoid abusive language, slurs, threats, or cartoon villain lines. Realistic pressure is okay; cruelty is not.`;
@@ -2441,7 +2434,6 @@ Use English only. In this app, "translation" means hidden emotion/need, not tran
 TASKS:
 1. Grade the USER's latest reply.
 2. Give short coaching feedback and a better grounded response.
-3. Generate the OTHER person's next text message that naturally follows the whole conversation.
 
 CONTEXT:
 Role/person: ${role} / ${otherPerson}
@@ -2462,23 +2454,13 @@ GRADING RULES:
 - Respectful space without validation or return plan is YELLOW.
 - Attacks, insults, contempt, stonewalling, abandonment, "leave me alone", "whatever", "I'm done", "stop bothering me", or pure fact-defense like "No I didn't" are RED.
 
-NEXT REPLY RULES:
-- Write at an 8th grade reading level, like a real text, 1-2 sentences.
-- If grade is GREEN: reduce intensity one notch, but keep the ${otherPerson}'s real pursuer/withdrawer style.
-- If grade is YELLOW: keep tension active and only slightly open.
-- If grade is RED: increase tension, but do not use abusive language.
-- The next reply must respond to details from the recent transcript when possible.
-${buildPersonaReplyRules(otherPerson)}
-
 Return valid JSON ONLY:
 {
   "grade": "green"|"yellow"|"red",
   "title": "Title (short)",
   "message": "Feedback (1-3 short sentences)",
   "perfectResponse": "Rewrite (1-2 short text-message sentences, grounded and human, 18-34 words; include a respectful timeout and return plan when that is the secure move)",
-  "translation": "Hidden emotion/need behind the latest other-person message (1 sentence)",
-  "nextReply": "Next text from the other person (1-2 short sentences)",
-  "nextTranslation": "Hidden emotion/need behind nextReply (1 sentence)"
+  "translation": "Hidden emotion/need behind the latest other-person message (1 sentence)"
 }`;
     }
 
@@ -2492,14 +2474,6 @@ Return valid JSON ONLY:
         let json = parseGeminiJson(response);
 
         lastGrade = normalizeGrade(json.grade);
-        const nextReply = String(json.nextReply || "").trim();
-        if (nextReply) {
-          preloadedNextReply = {
-            requestId,
-            reply: nextReply,
-            translation: json.nextTranslation || json.translation || currentTranslation
-          };
-        }
 
         processFeedbackAndMaybeWin(
           {
@@ -2588,26 +2562,6 @@ ${behaviorGuide}`;
       }
     }
 
-    function appendPreloadedReply() {
-      const pending = preloadedNextReply;
-      clearPreloadedNextReply();
-      if (!pending || !pending.reply) return false;
-
-      currentTranslation = pending.translation || currentTranslation;
-      lastReplyText = pending.reply;
-
-      const delay = wifePersona === 'pursuer' ? 250 : 650;
-      setTimeout(() => {
-        document.getElementById('typing-indicator').classList.add('hidden');
-        appendMessage('received', pending.reply);
-        chatHistory.push({ role: 'model', text: pending.reply });
-        scrollToBottom();
-        conversationStage++;
-      }, delay);
-
-      return true;
-    }
-
     function fallbackReply() {
       let delay = wifePersona === 'pursuer' ? 800 : 2500;
       setTimeout(() => {
@@ -2644,7 +2598,6 @@ ${behaviorGuide}`;
         const recovered = Object.assign({}, defaults);
         [
           "grade", "title", "message", "perfectResponse", "translation", "reply",
-          "nextReply", "nextTranslation",
           "theirLatestMessage", "theme", "theirEmotionNeed", "yourEmotionNeed",
           "groundedOpener", "summary"
         ].forEach(key => {
@@ -2822,7 +2775,6 @@ Return JSON ONLY:
     function goBack(reset = false, force = false) {
       if (overlayLocked && !force) return;
       aiTurnRequestId += 1;
-      clearPreloadedNextReply();
       document.getElementById('chat-view').classList.add('translate-x-full');
       document.getElementById('feedback-overlay').classList.add('hidden');
       if (reset) resetProgressState();
@@ -2935,7 +2887,6 @@ Return JSON ONLY:
       pendingWin = false;
       pendingWinPerfect = "";
       aiTurnRequestId += 1;
-      clearPreloadedNextReply();
 
       document.getElementById('message-input').focus();
     }
@@ -2957,7 +2908,6 @@ Return JSON ONLY:
       document.getElementById('typing-indicator').classList.remove('hidden');
       scrollToBottom();
 
-      if (aiEnabled && appendPreloadedReply()) return;
       if (aiEnabled) generateReplyWithGemini();
       else fallbackReply();
     }
@@ -2966,7 +2916,6 @@ Return JSON ONLY:
     function triggerWinFlow(perfectResponseFromAI) {
       scenarioWon = true;
       aiTurnRequestId += 1;
-      clearPreloadedNextReply();
 
       markScenarioCompleted(practicePerson, activeScenario ? activeScenario.id : null);
 
