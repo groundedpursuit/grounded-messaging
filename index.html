@@ -2378,12 +2378,15 @@ Return JSON ONLY:
       };
       const styleRules = wifePersona === 'pursuer'
         ? "- Pursuer style: the next text can press, ask again, protest, seek reassurance, or name the hurt more directly. A good user reply may lower the heat, but the person should not become instantly calm or perfectly grounded."
-        : "- Withdrawer style: the next text can be brief, cautious, distant, self-protective, or ask for space/time. A good user reply may make them a little more open, but they should not suddenly over-explain or sound like a coach.";
+        : "- Withdrawer style: the next text can be brief, cautious, distant, or self-protective. Only ask for space/time when the transcript shows flooding or pressure, and tie it to the specific issue.";
 
       return `OTHER PERSON REPLY STYLE:
 - The reply is from the ${otherPerson}, not from the user and not from a coach.
+- Never switch sides. If USER apologized, explained, or offered repair, the reply should react to that message as the ${otherPerson}; it should not apologize for what USER did.
+- Do not take ownership of USER's mistake. If the scenario says USER was late, distant, on the phone, forgot, changed plans, missed a deadline, or did not reply, OTHER should react to that impact instead of saying they did it.
 - Keep the other person true to the selected pursuer/withdrawer style. They can be imperfect, guarded, anxious, pressured, or hurt.
 - Do not make the reply sound like "The Grounded Response." Save calm repair language for perfectResponse only.
+- Avoid generic reusable lines like "I just need some space right now", "can we talk about this later", "okay thanks", or "I don't know." Make the reply specific to the current issue.
 ${styleRules}
 ${contextRules[practicePerson] || contextRules.wife}
 - Avoid abusive language, slurs, threats, or cartoon villain lines. Realistic pressure is okay; cruelty is not.`;
@@ -2528,6 +2531,10 @@ Return valid JSON ONLY:
 - If LAST_GRADE is RED: increase tension without insults, slurs, threats, or abuse.
 - Do not make the other person's reply sound like the user's grounded rewrite or like a therapist.
 - Respond to the recent transcript, not only the last message.
+- Speaker test: write only what OTHER would text back to USER right now. Do not apologize for USER's actions or continue USER's repair.
+- Ownership test: when the conflict is about USER's behavior, OTHER should not say "I didn't answer", "I was late", "I forgot", or similar ownership phrases unless OTHER actually did that in the transcript.
+- Specificity test: the reply must mention or clearly refer to one concrete detail from RECENT_TRANSCRIPT or Scenario. Do not send a generic space/talk-later response unless the transcript specifically shows flooding or a request for space.
+- If the person needs space, include the real reason from this conversation, not a standalone line.
 ${buildPersonaReplyRules(getPersonNoun())}
 Return valid JSON only:
 { "reply": "next message from the other person", "translation": "hidden emotion/need" }`;
