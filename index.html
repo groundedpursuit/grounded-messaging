@@ -1567,6 +1567,8 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
     let chatHistory = [];
     let lastReplyText = "";
     let overlayMode = "analysis"; // "analysis" | "decoder"
+    let preloadedNextReply = null;
+    let aiTurnRequestId = 0;
 
     // STRIKES + WIN STATE
     let gradeHistory = [];          // stores grades for attempts in current scenario
@@ -1584,6 +1586,17 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
       scenarioWon = false;
       pendingWin = false;
       pendingWinPerfect = "";
+      clearPreloadedNextReply();
+    }
+
+    function clearPreloadedNextReply() {
+      preloadedNextReply = null;
+    }
+
+    function nextAITurnRequestId() {
+      aiTurnRequestId += 1;
+      clearPreloadedNextReply();
+      return aiTurnRequestId;
     }
 
     function recalcConsecutiveReds() {
@@ -2125,6 +2138,8 @@ Return JSON ONLY:
       currentTranslation = scenarioData.translation || "They’re sharing a feeling.";
       conversationStage = 0;
       lastReplyText = "";
+      lastGrade = null;
+      aiTurnRequestId += 1;
 
       // reset win/strike progress for this scenario
       resetProgressState();
@@ -2263,7 +2278,8 @@ Return JSON ONLY:
       document.getElementById('feedback-translation').innerText = `"${currentTranslation}"`;
       document.getElementById('feedback-translation').parentElement.classList.remove('hidden');
 
-      if (aiEnabled) analyzeWithGemini(activeScenario, text);
+      const requestId = nextAITurnRequestId();
+      if (aiEnabled) analyzeWithGemini(activeScenario, text, requestId);
       else setTimeout(() => analyzeResponseLocal(text), 600);
     }
 
@@ -2307,9 +2323,9 @@ Return JSON ONLY:
     // GEMINI (via GAS server-side proxy — JSONP avoids CORS/redirect restrictions)
     const GAS_PROXY_URL = 'https://script.google.com/macros/s/AKfycbx1XGb3k8fu2xjnvYDIC0ovHELOrUeo2P8M4gV7v6zXdrgu9AFvZa0pvKXKFaf3liazvg/exec';
 
-    function callGemini(prompt) {
+    function callGemini(prompt, options = {}) {
       return new Promise(function(resolve, reject) {
-        const cbName = 'gc_' + Date.now();
+        const cbName = 'gc_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
         const script = document.createElement('script');
         const cleanup = () => { delete window[cbName]; script.remove(); };
         window[cbName] = function(data) {
@@ -2318,7 +2334,8 @@ Return JSON ONLY:
           else resolve(data.text);
         };
         script.onerror = function() { cleanup(); reject(new Error('Network error')); };
-        script.src = GAS_PROXY_URL + '?action=gemini&callback=' + cbName + '&prompt=' + encodeURIComponent(prompt);
+        const tier = options.tier ? '&tier=' + encodeURIComponent(options.tier) : '';
+        script.src = GAS_PROXY_URL + '?action=gemini&callback=' + cbName + tier + '&prompt=' + encodeURIComponent(prompt);
         document.head.appendChild(script);
       });
     }
@@ -2354,45 +2371,109 @@ Return JSON ONLY:
         : "Partner is Avoidant/Withdrawer. Needs space and calm.";
     }
 
-    async function analyzeWithGemini(scenario, userText) {
-      const personaPrompt = buildAIPersonaPrompt();
-      const voicePrompt = philVoicePrompt();
+    function truncateForPrompt(text, max = 220) {
+      const clean = String(text || "").replace(/\s+/g, " ").trim();
+      if (clean.length <= max) return clean;
+      return clean.slice(0, max - 1).trim() + "…";
+    }
 
+    function buildCompactTranscript(limit = 8) {
+      return chatHistory
+        .filter(m => m && m.text && !/^Context:/i.test(String(m.text)))
+        .slice(-limit)
+        .map(m => `${m.role === 'model' ? 'OTHER' : 'USER'}: ${truncateForPrompt(m.text, 240)}`)
+        .join("\n");
+    }
+
+    function buildScenarioContextSummary(scenario) {
+      if (!scenario) return "";
+      const parts = [
+        scenario.name ? `Scenario: ${scenario.name}` : "",
+        scenario.initialText ? `Opening text: ${truncateForPrompt(scenario.initialText, 220)}` : "",
+        scenario.translation ? `Original hidden meaning: ${truncateForPrompt(scenario.translation, 180)}` : "",
+        scenario.tips ? `Coach note: ${truncateForPrompt(scenario.tips, 160)}` : ""
+      ];
+      return parts.filter(Boolean).join("\n");
+    }
+
+    function normalizeGrade(value) {
+      const grade = String(value || "yellow").toLowerCase().trim();
+      return ["green", "yellow", "red"].includes(grade) ? grade : "yellow";
+    }
+
+    function buildCombinedTurnPrompt(scenario, userText) {
+      const role = practicePerson;
       const otherPerson = getPersonNoun();
+      const transcript = buildCompactTranscript();
 
-      const systemPrompt =
-`${personaPrompt}
-${voicePrompt}
+      return `${buildAIPersonaPrompt()}
+${buildRoleplayPrompt()}
+${philVoicePrompt()}
 
-Grade the user's text. Rules:
-- Name the emotion first (reflect + empathy).
-- Secure self-boundaries can be GREEN. If the user validates the other person, honestly says they are flooded/overwhelmed/can't talk well now, and gives a clear return plan, grade green.
-- If the user takes space respectfully but misses validation or a return plan, grade yellow and coach them to add it.
-- No defending facts.
-- No attacks/insults.
-- Stonewalling or abandonment like "leave me alone", "whatever", "I'm done", or "stop bothering me" is RED.
-- Arguing facts like "No I didn't" is RED.
-- Good examples: "I hear you. I'm flooded and can't talk clearly right now. I'll come back in 30 minutes." / "I understand what you need. I need a minute to cool down, and I do want to come back to this tonight."
+You are running a texting practice turn. Use the whole recent transcript, not only the last message.
 
-${otherPerson} said: "${chatHistory[chatHistory.length - 2].text}"
-Hidden meaning: ${currentTranslation}
-User replied: "${userText}"
+TASKS:
+1. Grade the USER's latest reply.
+2. Give short coaching feedback and a better grounded response.
+3. Generate the OTHER person's next text message that naturally follows the whole conversation.
+
+CONTEXT:
+Role/person: ${role} / ${otherPerson}
+Persona style: ${wifePersona}
+LAST_GRADE_BEFORE_THIS_TURN: ${lastGrade || "none"}
+CURRENT_HIDDEN_MEANING: ${currentTranslation || "They are sharing a feeling."}
+${buildScenarioContextSummary(scenario)}
+
+RECENT_TRANSCRIPT:
+${transcript}
+
+LATEST_USER_REPLY:
+"${truncateForPrompt(userText, 360)}"
+
+GRADING RULES:
+- Name emotion first: reflect + empathy.
+- Secure self-boundaries can be GREEN when the user validates, names overwhelm/flooding honestly, and gives a clear return plan.
+- Respectful space without validation or return plan is YELLOW.
+- Attacks, insults, contempt, stonewalling, abandonment, "leave me alone", "whatever", "I'm done", "stop bothering me", or pure fact-defense like "No I didn't" are RED.
+
+NEXT REPLY RULES:
+- Write at an 8th grade reading level, like a real text, 1-2 sentences.
+- If grade is GREEN: the ${otherPerson} softens and moves toward repair.
+- If grade is YELLOW: the ${otherPerson} stays tense but a little open.
+- If grade is RED: the ${otherPerson} escalates some, but do not use abusive language.
+- Coworker replies must stay professional and specific.
+- The next reply must respond to details from the recent transcript when possible.
 
 Return valid JSON ONLY:
 {
   "grade": "green"|"yellow"|"red",
   "title": "Title (short)",
-  "message": "Feedback (1–3 short sentences)",
-  "perfectResponse": "Rewrite (1–2 short text-message sentences, grounded and human, 18-34 words; include a respectful timeout and return plan when that is the secure move)",
-  "translation": "Hidden emotion/need (1 sentence)"
+  "message": "Feedback (1-3 short sentences)",
+  "perfectResponse": "Rewrite (1-2 short text-message sentences, grounded and human, 18-34 words; include a respectful timeout and return plan when that is the secure move)",
+  "translation": "Hidden emotion/need behind the latest other-person message (1 sentence)",
+  "nextReply": "Next text from the other person (1-2 short sentences)",
+  "nextTranslation": "Hidden emotion/need behind nextReply (1 sentence)"
 }`;
+    }
+
+    async function analyzeWithGemini(scenario, userText, requestId) {
+      const systemPrompt = buildCombinedTurnPrompt(scenario, userText);
 
       try {
-        const response = await callGemini(systemPrompt);
-        let json = parseGeminiJson(response);
-        if (!json.grade) json.grade = 'yellow';
+        const response = await callGemini(systemPrompt, { tier: "fast" });
+        if (requestId !== aiTurnRequestId) return;
 
-        lastGrade = String(json.grade).toLowerCase();
+        let json = parseGeminiJson(response);
+
+        lastGrade = normalizeGrade(json.grade);
+        const nextReply = String(json.nextReply || "").trim();
+        if (nextReply) {
+          preloadedNextReply = {
+            requestId,
+            reply: nextReply,
+            translation: json.nextTranslation || json.translation || currentTranslation
+          };
+        }
 
         processFeedbackAndMaybeWin(
           {
@@ -2406,6 +2487,7 @@ Return valid JSON ONLY:
         );
       } catch (e) {
         console.warn("API Fail", e);
+        if (requestId !== aiTurnRequestId) return;
         analyzeResponseLocal(userText);
       }
     }
@@ -2430,8 +2512,6 @@ Return valid JSON ONLY:
     async function generateReplyWithGemini() {
       const personaPrompt = buildRoleplayPrompt();
       const role = practicePerson;
-      const lastOtherMessage = [...chatHistory].reverse().find(m => m.role === 'model');
-      const lastUserMessage = [...chatHistory].reverse().find(m => m.role === 'user');
 
       const behaviorGuide =
 `Conversation rules:
@@ -2441,6 +2521,7 @@ Return valid JSON ONLY:
 - If LAST_GRADE is YELLOW: the person stays tense but a little open.
 - If LAST_GRADE is RED: the person escalates some.
 - If role is COWORKER: stay professional (no insults, no slurs, no abuse).
+- Respond to the recent transcript, not only the last message.
 Return valid JSON only:
 { "reply": "next message from the other person", "translation": "hidden emotion/need" }`;
 
@@ -2448,12 +2529,14 @@ Return valid JSON only:
 `${personaPrompt}
 ROLE: ${role.toUpperCase()}
 LAST_GRADE: ${lastGrade}
-OTHER_PERSON_LAST_MESSAGE: "${(lastOtherMessage && lastOtherMessage.text) || ""}"
-USER_LAST_REPLY: "${(lastUserMessage && lastUserMessage.text) || ""}"
+CURRENT_HIDDEN_MEANING: ${currentTranslation}
+${buildScenarioContextSummary(activeScenario)}
+RECENT_TRANSCRIPT:
+${buildCompactTranscript()}
 ${behaviorGuide}`;
 
       try {
-        const response = await callGemini(systemPrompt);
+        const response = await callGemini(systemPrompt, { tier: "fast" });
         const json = parseGeminiJson(response);
         const replyText = json.reply || "…";
         currentTranslation = json.translation || currentTranslation;
@@ -2470,6 +2553,26 @@ ${behaviorGuide}`;
       } catch (e) {
         fallbackReply();
       }
+    }
+
+    function appendPreloadedReply() {
+      const pending = preloadedNextReply;
+      clearPreloadedNextReply();
+      if (!pending || !pending.reply) return false;
+
+      currentTranslation = pending.translation || currentTranslation;
+      lastReplyText = pending.reply;
+
+      const delay = wifePersona === 'pursuer' ? 250 : 650;
+      setTimeout(() => {
+        document.getElementById('typing-indicator').classList.add('hidden');
+        appendMessage('received', pending.reply);
+        chatHistory.push({ role: 'model', text: pending.reply });
+        scrollToBottom();
+        conversationStage++;
+      }, delay);
+
+      return true;
     }
 
     function fallbackReply() {
@@ -2508,6 +2611,7 @@ ${behaviorGuide}`;
         const recovered = Object.assign({}, defaults);
         [
           "grade", "title", "message", "perfectResponse", "translation", "reply",
+          "nextReply", "nextTranslation",
           "theirLatestMessage", "theme", "theirEmotionNeed", "yourEmotionNeed",
           "groundedOpener", "summary"
         ].forEach(key => {
@@ -2684,6 +2788,8 @@ Return JSON ONLY:
     // BACK
     function goBack(reset = false, force = false) {
       if (overlayLocked && !force) return;
+      aiTurnRequestId += 1;
+      clearPreloadedNextReply();
       document.getElementById('chat-view').classList.add('translate-x-full');
       document.getElementById('feedback-overlay').classList.add('hidden');
       if (reset) resetProgressState();
@@ -2795,6 +2901,8 @@ Return JSON ONLY:
       // editing clears pending win (recomputed on next grade)
       pendingWin = false;
       pendingWinPerfect = "";
+      aiTurnRequestId += 1;
+      clearPreloadedNextReply();
 
       document.getElementById('message-input').focus();
     }
@@ -2816,6 +2924,7 @@ Return JSON ONLY:
       document.getElementById('typing-indicator').classList.remove('hidden');
       scrollToBottom();
 
+      if (aiEnabled && appendPreloadedReply()) return;
       if (aiEnabled) generateReplyWithGemini();
       else fallbackReply();
     }
@@ -2823,6 +2932,8 @@ Return JSON ONLY:
     // WIN FLOW
     function triggerWinFlow(perfectResponseFromAI) {
       scenarioWon = true;
+      aiTurnRequestId += 1;
+      clearPreloadedNextReply();
 
       markScenarioCompleted(practicePerson, activeScenario ? activeScenario.id : null);
 

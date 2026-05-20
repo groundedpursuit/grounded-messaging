@@ -1,7 +1,7 @@
 function doGet(e) {
   if (e && e.parameter && e.parameter.action === 'gemini') {
     try {
-      var text = callGeminiProxy(e.parameter.prompt || '');
+      var text = callGeminiProxy(e.parameter.prompt || '', e.parameter.tier || '');
       var payload = JSON.stringify({ text: text });
       var cb = e.parameter.callback;
       var output = cb ? cb + '(' + payload + ')' : payload;
@@ -21,14 +21,15 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-function callGeminiProxy(prompt) {
+function callGeminiProxy(prompt, tier) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY not set in Script Properties.');
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+  var model = getGeminiModelForTier(tier);
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
   var response = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify(buildGeminiPayload(prompt)),
+    payload: JSON.stringify(buildGeminiPayload(prompt, null, tier)),
     muteHttpExceptions: true
   });
   var code = response.getResponseCode();
@@ -39,7 +40,13 @@ function callGeminiProxy(prompt) {
           data.candidates[0].content.parts[0].text) || '';
 }
 
-function buildGeminiPayload(prompt, imagePart) {
+function getGeminiModelForTier(tier) {
+  return String(tier || '').toLowerCase() === 'fast'
+    ? 'gemini-2.5-flash-lite'
+    : 'gemini-2.5-flash';
+}
+
+function buildGeminiPayload(prompt, imagePart, tier) {
   var parts = [{ text: prompt }];
   if (imagePart) parts.push(imagePart);
 
@@ -47,6 +54,10 @@ function buildGeminiPayload(prompt, imagePart) {
     temperature: 0.25,
     topP: 0.8
   };
+
+  if (String(tier || '').toLowerCase() === 'fast' && !imagePart) {
+    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  }
 
   if (expectsJsonResponse(prompt)) {
     generationConfig.responseMimeType = 'application/json';
