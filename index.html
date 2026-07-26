@@ -2436,7 +2436,8 @@ Use English only. In this app, "translation" means hidden emotion/need, not tran
 
 TASKS:
 1. Grade the USER's latest reply.
-2. Give short coaching feedback and a better grounded response.
+2. Give short coaching feedback.
+3. Write "The Grounded Response": the ideal next text the USER should send back to the ${otherPerson}. It must respond to the ${otherPerson}'s most recent message in RECENT_TRANSCRIPT and speak to CURRENT_HIDDEN_MEANING. Do NOT rewrite, polish, or echo the USER's latest reply — compose the reply from scratch as if answering the ${otherPerson} directly.
 
 CONTEXT:
 Role/person: ${role} / ${otherPerson}
@@ -2462,7 +2463,7 @@ Return valid JSON ONLY:
   "grade": "green"|"yellow"|"red",
   "title": "Title (short)",
   "message": "Feedback (1-3 short sentences)",
-  "perfectResponse": "Rewrite (1-2 short text-message sentences, grounded and human, 18-34 words; include a respectful timeout and return plan when that is the secure move)",
+  "perfectResponse": "The Grounded Response: 1-2 short text-message sentences (18-34 words) the USER sends to the ${otherPerson}, replying to the ${otherPerson}'s most recent message. Reflect the ${otherPerson}'s feeling/need first, then reconnect; include a respectful timeout and return plan only when flooding is the secure move. Grounded and human, never a rewrite of the USER's own words.",
   "translation": "Hidden emotion/need behind the latest other-person message (1 sentence)"
 }`;
     }
