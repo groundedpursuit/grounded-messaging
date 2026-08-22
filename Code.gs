@@ -1,7 +1,8 @@
 function doGet(e) {
   if (e && e.parameter && e.parameter.action === 'gemini') {
     try {
-      var text = callGeminiProxy(e.parameter.prompt || '', e.parameter.tier || '');
+      if (!underDailyCeiling_()) throw new Error('Daily AI ceiling reached.');
+      var text = callGeminiProxy(e.parameter.prompt || '', e.parameter.tier || '', e.parameter.temp);
       var payload = JSON.stringify({ text: text });
       var cb = e.parameter.callback;
       var output = cb ? cb + '(' + payload + ')' : payload;
@@ -21,11 +22,37 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-function callGeminiProxy(prompt, tier) {
-  var response = fetchGeminiText(prompt, tier);
+// The proxy is open to anyone holding the URL, so the client-side per-user cap
+// cannot be the only guard. This is the hard ceiling on a day's spend.
+var DAILY_GEMINI_CALL_CEILING = 4000;
+
+function underDailyCeiling_() {
+  var props = PropertiesService.getScriptProperties();
+  var day = Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd');
+  var lock = LockService.getScriptLock();
+  var locked = false;
+  try { locked = lock.tryLock(400); } catch (e) { locked = false; }
+
+  try {
+    var state = { day: day, count: 0 };
+    try {
+      var parsed = JSON.parse(props.getProperty('GEMINI_DAY_COUNT') || '{}');
+      if (parsed && parsed.day === day) state = { day: day, count: Number(parsed.count) || 0 };
+    } catch (e) {}
+
+    if (state.count >= DAILY_GEMINI_CALL_CEILING) return false;
+    props.setProperty('GEMINI_DAY_COUNT', JSON.stringify({ day: day, count: state.count + 1 }));
+    return true;
+  } finally {
+    if (locked) lock.releaseLock();
+  }
+}
+
+function callGeminiProxy(prompt, tier, temp) {
+  var response = fetchGeminiText(prompt, tier, temp);
   var code = response.getResponseCode();
   if (isFastTier(tier) && (code === 429 || code === 503)) {
-    response = fetchGeminiText(prompt, 'standard');
+    response = fetchGeminiText(prompt, 'standard', temp);
     code = response.getResponseCode();
   }
   if (code !== 200) throw new Error('Gemini error ' + code + ': ' + response.getContentText());
@@ -35,7 +62,7 @@ function callGeminiProxy(prompt, tier) {
           data.candidates[0].content.parts[0].text) || '';
 }
 
-function fetchGeminiText(prompt, tier) {
+function fetchGeminiText(prompt, tier, temp) {
   var apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY not set in Script Properties.');
   var model = getGeminiModelForTier(tier);
@@ -43,7 +70,7 @@ function fetchGeminiText(prompt, tier) {
   return UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify(buildGeminiPayload(prompt, null, tier)),
+    payload: JSON.stringify(buildGeminiPayload(prompt, null, tier, temp)),
     muteHttpExceptions: true
   });
 }
@@ -58,12 +85,12 @@ function isFastTier(tier) {
   return String(tier || '').toLowerCase() === 'fast';
 }
 
-function buildGeminiPayload(prompt, imagePart, tier) {
+function buildGeminiPayload(prompt, imagePart, tier, temp) {
   var parts = [{ text: prompt }];
   if (imagePart) parts.push(imagePart);
 
   var generationConfig = {
-    temperature: 0.25,
+    temperature: clampTemp_(temp),
     topP: 0.8
   };
 
@@ -79,6 +106,12 @@ function buildGeminiPayload(prompt, imagePart, tier) {
     contents: [{ parts: parts }],
     generationConfig: generationConfig
   };
+}
+
+function clampTemp_(temp) {
+  var value = parseFloat(temp);
+  if (isNaN(value)) return 0.25;
+  return Math.min(1, Math.max(0, value));
 }
 
 function expectsJsonResponse(prompt) {
