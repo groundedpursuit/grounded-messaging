@@ -306,6 +306,10 @@
         <div class="overflow-y-auto mobile-scroll flex-1 pr-2">
           <div id="feedback-badge" class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-4">WAITING</div>
 
+          <p id="quick-mode-note" class="hidden text-[11px] text-gray-500 mb-3 leading-snug">
+            Quick feedback mode — today's AI coaching is used up. It comes back tomorrow.
+          </p>
+
           <p id="feedback-text" class="text-gray-700 text-sm leading-relaxed mb-4">...</p>
 
           <div class="bg-indigo-50 border-l-4 border-indigo-400 p-3 rounded-r-lg mb-4">
@@ -631,6 +635,40 @@
       saveCompleted(store);
     }
 
+    // ============================
+    // DAILY AI CAP
+    // A practice turn costs two Gemini calls (grading + the other person's
+    // reply), so the cap counts turns, not calls. Running out drops the app
+    // to the keyword grader it already ships with, never to a dead end.
+    // ============================
+    const AI_CAP_KEY = "gp_ai_reps_v1";
+    const AI_DAILY_CAP = 20;
+
+    function aiCapDayStamp() {
+      const d = new Date();
+      return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    }
+    function loadAiUsage() {
+      const today = aiCapDayStamp();
+      try {
+        const parsed = JSON.parse(safeStorage.getItem(AI_CAP_KEY) || "{}");
+        if (parsed && parsed.day === today) return { day: today, count: Number(parsed.count) || 0 };
+      } catch (e) {}
+      return { day: today, count: 0 };
+    }
+    function aiRepsRemaining() { return Math.max(0, AI_DAILY_CAP - loadAiUsage().count); }
+    function aiAvailable() { return aiEnabled && aiRepsRemaining() > 0; }
+    function recordAiRep() {
+      const usage = loadAiUsage();
+      safeStorage.setItem(AI_CAP_KEY, JSON.stringify({ day: usage.day, count: usage.count + 1 }));
+      updateModeIndicator();
+      updateQuickModeNote();
+    }
+    function updateQuickModeNote() {
+      const note = document.getElementById('quick-mode-note');
+      if (note) note.classList.toggle('hidden', aiAvailable());
+    }
+
     // ✅ "ALL WON" modal (once per category)
     const ALL_WON_SHOWN_KEY = "gp_allwon_shown_v1";
     function loadAllWonShown() {
@@ -715,16 +753,208 @@ Sound like Phil Merrell at Grounded Pursuit: calm, steady, warm, practical, and 
 Write like a real text message, not a therapy worksheet.
 Use 1-2 short sentences (about 18-34 words total).
 Lead with reflection + one ownership line when needed + one gentle reconnect question, or a respectful timeout with a clear return plan when flooded.
-Prefer phrases like: "I hear you", "that would feel awful", "I want us on the same team", "help me understand what this was like for you", "tell me more".
+Sound like an actual man texting. Contractions are good. Sentence fragments are good. A one-word gut reaction is good when the moment is hot.
+Vary how you open every single time. Never lean on one stock phrase. "I hear you" is allowed once in a while, never as a default.
 Avoid robotic or clinical language like: "validate", "dynamics", "emotional regulation", "attachment", "nervous system", "underlying process".`;
+    }
+
+    // ============================
+    // GROUNDED RESPONSE OPENER VARIETY
+    // The prompt used to tell the model to prefer "I hear you", so every
+    // reply opened identically. A register is assigned per turn instead, and
+    // openers used in the last few turns are banned outright.
+    // ============================
+    const openerRegisters = {
+      reflect: { label: "reflect their words back", examples: ["It sounds like...", "Sounds like...", "So you're saying...", "What I'm hearing is..."] },
+      imagine: { label: "picture what it was like for them", examples: ["I can imagine...", "I get why...", "I can see why...", "That has to..."] },
+      gut:     { label: "a short, real gut reaction first, then the substance", examples: ["Whoa.", "Ouch.", "Oof.", "Man.", "Okay, that landed."] },
+      own:     { label: "take ownership immediately, no empathy preamble", examples: ["You're right.", "That's on me.", "Yeah, I dropped that.", "Fair."] },
+      agree:   { label: "plain agreement", examples: ["That makes sense.", "That's fair.", "Yeah.", "I hear you."] },
+      direct:  { label: "no opener at all, start straight into the real content the way a normal text does", examples: ["(skip the acknowledgement line entirely)"] },
+      work:    { label: "workplace-appropriate acknowledgement", examples: ["Got it.", "Fair point.", "Understood.", "Thanks for flagging that."] }
+    };
+
+    let recentOpenerRegisters = [];
+    let recentOpenerStems = [];
+    let assignedOpenerRegister = 'reflect';
+
+    function resetOpenerVariety() {
+      recentOpenerRegisters = [];
+      recentOpenerStems = [];
+      assignedOpenerRegister = 'reflect';
+    }
+
+    function hashSeed(str) {
+      let h = 0;
+      const s = String(str || '');
+      for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+      return Math.abs(h);
+    }
+
+    function messageRunsHot(text) {
+      const t = String(text || '');
+      if (!t) return false;
+      if (t.indexOf('!') !== -1) return true;
+      if (/\b(never|always|hate|sick of|fed up|invisible|betray|nothing)\b/i.test(t)) return true;
+      const letters = t.replace(/[^A-Za-z]/g, '');
+      if (letters.length > 8 && letters === letters.toUpperCase()) return true;
+      return false;
+    }
+
+    function lastOtherMessage() {
+      for (let i = chatHistory.length - 1; i >= 0; i--) {
+        const m = chatHistory[i];
+        if (m && m.role === 'model' && m.text) return m.text;
+      }
+      return (activeScenario && activeScenario.initialText) || '';
+    }
+
+    function pickOpenerRegister(scenario) {
+      const hot = messageRunsHot(lastOtherMessage());
+      let pool;
+      if (practicePerson === 'coworker') pool = ['work', 'own', 'reflect', 'direct', 'agree'];
+      else if (hot) pool = ['gut', 'own', 'reflect', 'imagine', 'direct', 'agree'];
+      else pool = ['reflect', 'imagine', 'direct', 'agree', 'own'];
+
+      const blocked = recentOpenerRegisters.slice(-2);
+      const usable = pool.filter(k => blocked.indexOf(k) === -1);
+      const list = usable.length ? usable : pool;
+      const seed = hashSeed(String((scenario && scenario.id) || 'custom') + '|' + practicePerson + '|' + aiTurnRequestId);
+      const key = list[seed % list.length];
+
+      recentOpenerRegisters.push(key);
+      if (recentOpenerRegisters.length > 6) recentOpenerRegisters.shift();
+      assignedOpenerRegister = key;
+      return key;
+    }
+
+    function buildOpenerInstruction(scenario) {
+      const key = pickOpenerRegister(scenario);
+      const reg = openerRegisters[key] || openerRegisters.reflect;
+      const banned = recentOpenerStems.slice(-3).filter(Boolean);
+      const banLine = banned.length
+        ? 'Do NOT open with any of these, they were just used: ' + banned.map(b => '"' + b + '"').join(', ') + '.'
+        : 'Do not open the way a coaching script would.';
+
+      return `OPENING STYLE FOR THIS TURN (required):
+Open The Grounded Response in this register: ${reg.label}.
+Examples of that register: ${reg.examples.join('  /  ')}
+Do not copy an example word for word if it does not fit the moment. Write what a real man would actually type.
+${banLine}
+Only use "I hear you" when this turn's register is plain agreement, and even then look for a better fit first.
+If the register does not fit what actually happened (taking ownership when the user did nothing wrong, for example), use the closest register that stays honest.`;
+    }
+
+    function openerStem(text) {
+      return String(text || '')
+        .toLowerCase()
+        .replace(/[^a-z\s']/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .slice(0, 3)
+        .join(' ');
+    }
+
+    // Only strips a stock lead-in that is a complete short sentence, so we
+    // never behead a sentence that needs its opening ("It sounds like you...").
+    const stockLeadIn = /^(i hear you|i hear ya|i hear that|that makes sense|i understand|i get it)[.,!]+\s+/i;
+
+    // Recorded stems are three words of a whole reply while an example is one or
+    // two, so these have to be compared by prefix, not equality.
+    function stemClashes(candidateStem, stems) {
+      if (!candidateStem) return true;
+      return stems.some(s => s && (s.indexOf(candidateStem) === 0 || candidateStem.indexOf(s) === 0));
+    }
+
+    const openerStopWords = ["that", "thats", "that's", "this", "you", "your", "youre", "you're",
+      "i", "im", "i'm", "it", "its", "it's", "is", "a", "the", "and", "me", "my", "okay", "yeah", "so"];
+
+    function contentWords(text, take) {
+      return String(text || '')
+        .toLowerCase()
+        .replace(/[^a-z\s']/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .slice(0, take)
+        .filter(w => w && openerStopWords.indexOf(w) === -1);
+    }
+
+    // Prevents "That's fair. That's a fair callout..." - the prefix check alone
+    // does not catch a word the body reuses a little further in.
+    function echoesBody(example, body) {
+      const head = contentWords(body, 6);
+      return contentWords(example, 4).some(w => head.indexOf(w) !== -1);
+    }
+
+    // The model sometimes stacks two acknowledgements. Peel them all off before
+    // prepending a new one, or the reply ends up with three in a row.
+    function stripStockLeadIns(text) {
+      let out = String(text || '').trim();
+      for (let i = 0; i < 2; i++) {
+        if (!stockLeadIn.test(out)) break;
+        const next = out.replace(stockLeadIn, '').trim();
+        if (next.length < 12) break;
+        out = next;
+      }
+      return out;
+    }
+
+    // Only registers whose examples stand alone as a sentence can be used here,
+    // because the replacement gets prefixed to an already-complete sentence.
+    // A lead-in like "I can imagine" would produce "I can imagine that makes sense."
+    function alternateOpenerFor(register, body) {
+      const order = ['own', 'agree', 'gut', 'work'];
+      const blocked = recentOpenerStems.slice(-3);
+      const bodyStem = openerStem(body);
+      const startAt = Math.max(0, order.indexOf(register));
+
+      for (let step = 1; step <= order.length; step++) {
+        const key = order[(startAt + step) % order.length];
+        if (key === 'work' && practicePerson !== 'coworker') continue;
+        if (key === 'gut' && practicePerson === 'coworker') continue;
+        const choice = (openerRegisters[key].examples || []).find(ex => {
+          if (!/[.!?]$/.test(ex)) return false;
+          const exStem = openerStem(ex);
+          if (stemClashes(exStem, [bodyStem])) return false;
+          if (echoesBody(ex, body)) return false;
+          return !stemClashes(exStem, blocked);
+        });
+        if (choice) return choice.trim();
+      }
+
+      return ["That's fair.", "Okay.", "Yeah."].find(f =>
+        !stemClashes(openerStem(f), [bodyStem]) && !echoesBody(f, body)) || "Okay.";
+    }
+
+    function enforceOpenerVariety(text) {
+      let out = String(text || '').trim();
+      if (!out) return out;
+
+      const stem = openerStem(out);
+      if (stem && recentOpenerStems.indexOf(stem) !== -1 && stockLeadIn.test(out)) {
+        const stripped = stripStockLeadIns(out);
+        // If nothing could be peeled off, leave the reply alone rather than
+        // stacking a second acknowledgement on top of the first.
+        if (stripped !== out && stripped.length > 12) {
+          const alt = alternateOpenerFor(assignedOpenerRegister, stripped);
+          const body = stripped.charAt(0).toUpperCase() + stripped.slice(1);
+          out = /[.!?]$/.test(alt)
+            ? alt + ' ' + body
+            : alt + ' ' + body.charAt(0).toLowerCase() + body.slice(1);
+        }
+      }
+
+      recentOpenerStems.push(openerStem(out));
+      if (recentOpenerStems.length > 5) recentOpenerStems.shift();
+      return out;
     }
 
     function polishGroundedResponse(text) {
       const fallbackByRole = {
-        coworker: "I hear you. You're right to flag it. That's on me. What do you need first so we're aligned?",
-        family: "I hear you. That makes sense. I don't want us fighting. Help me understand what felt hardest for you.",
-        wife: "I hear you. You're right, that hurt. I don't want us fighting. Help me understand what part hit hardest for you.",
-        girlfriend: "I hear you. That makes sense. I don't want distance between us. Help me understand what part hit hardest for you."
+        coworker: "Got it. You're right to flag it, and that's on me. What do you need first so we're aligned?",
+        family: "Sounds like that has been sitting with you a while. I don't want us fighting. What felt hardest about it?",
+        wife: "You're right, that hurt. I don't want us fighting about it. Help me understand what part hit you hardest.",
+        girlfriend: "I can see why that landed hard. I don't want distance between us. What part hit you hardest?"
       };
 
       let out = String(text || "").trim();
@@ -732,8 +962,8 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
       out = out.replace(/\s+/g, ' ').trim();
 
       const swaps = [
-        [/I understand your feelings\.?/gi, "I hear you."],
-        [/Your feelings are valid\.?/gi, "That makes sense."],
+        [/I understand your feelings\.?/gi, "That makes sense."],
+        [/Your feelings are valid\.?/gi, "That's fair."],
         [/I want to understand what felt most painful for you there\.?/gi, "Help me understand what part hit hardest for you."],
         [/I can see how you feel/gi, "I can see why that felt"],
         [/\bemotional safety\b/gi, "safety"],
@@ -748,8 +978,23 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
         return fallbackByRole[practicePerson] || fallbackByRole.wife;
       }
 
+      // Trim by length, not by sentence count. A flat two-sentence cap was
+      // silently chopping the closing line off most of the written responses
+      // ("...I want you to feel like a priority to me"), and a short opener
+      // like "Whoa." used to burn one of the two slots on its own.
       const sentences = out.split(/(?<=[.!?])\s+/).filter(Boolean);
-      if (sentences.length > 2) out = sentences.slice(0, 2).join(' ');
+      const MAX_RESPONSE_WORDS = 42;
+      if (sentences.length > 1) {
+        const kept = [];
+        let words = 0;
+        for (const sentence of sentences) {
+          const count = sentence.split(/\s+/).filter(Boolean).length;
+          if (kept.length && words + count > MAX_RESPONSE_WORDS) break;
+          kept.push(sentence);
+          words += count;
+        }
+        out = kept.join(' ');
+      }
 
       if (out.length < 24) {
         const tail = practicePerson === 'coworker'
@@ -758,7 +1003,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
         out = `${out} ${tail}`.trim();
       }
 
-      return out;
+      return enforceOpenerVariety(out);
     }
 
     function includesAnyPattern(text, patterns) {
@@ -771,9 +1016,9 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
 
     function buildSecureBoundaryResponse() {
       if (practicePerson === 'coworker') {
-        return "I hear you. I need a little time to sort this out, and I'll come back today with a clear update.";
+        return "Fair. I need a little time to sort this out, and I'll come back to you today with a clear update.";
       }
-      return "I hear you. I'm flooded and don't want to make this worse, so I'm going to take 30 minutes and come back.";
+      return "That's real, and I don't want to make it worse. I'm flooded right now. Give me 30 minutes and I'll come back to this.";
     }
 
     function assessSecureBoundary(userText) {
@@ -947,7 +1192,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
 
     // --- DATA ---
     const universalRedFlags = ["calm down", "crazy", "always", "never", "relax", "wrong", "drama", "lying", "childish", "grow up", "chill", "bitch", "fuck", "shit", "asshole", "damn", "stupid", "idiot", "jerk", "shut up", "you suck", "loser", "pathetic", "worst", "hate you", "narcissist", "toxic", "yes you do", "no i didn't", "no i don't", "i did", "not true"];
-    const universalGreenFlags = ["hear you", "hear that", "hearing that", "hearing you", "feel like", "feels like", "must be", "must feel", "frustrating", "frustrated", "hard", "tough", "rough", "makes sense", "total sense", "totally sense", "make sense", "sorry", "apologize", "my bad", "understand", "understood", "get it", "got it", "getting it", "sounds like", "sound like", "sounds", "valid", "fair", "totally fair", "fair point", "hear ya", "stress", "stressful", "overwhelmed", "love you", "love ya", "i love you", "care about you", "care for you", "team", "together", "partner", "on the same page", "that sucks", "miss you", "miss us", "want that too", "want the same"];
+    const universalGreenFlags = ["hear you", "hear that", "hearing that", "hearing you", "feel like", "feels like", "must be", "must feel", "frustrating", "frustrated", "hard", "tough", "rough", "makes sense", "total sense", "totally sense", "make sense", "sorry", "apologize", "my bad", "understand", "understood", "get it", "got it", "getting it", "sounds like", "sound like", "sounds", "valid", "fair", "totally fair", "fair point", "hear ya", "stress", "stressful", "overwhelmed", "love you", "love ya", "i love you", "care about you", "care for you", "team", "together", "partner", "on the same page", "that sucks", "miss you", "miss us", "want that too", "want the same", "i can imagine", "can imagine", "whoa", "ouch", "oof", "that's rough", "thats rough", "that landed", "you're right", "youre right", "on me", "my fault", "no wonder"];
 
     // ==========================
     // SCENARIO POOLS BY PERSON
@@ -960,7 +1205,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["did do", "nagging", "busy", ...universalRedFlags],
           greenFlags: ["wall", "ignored", "ignoring", "listen", "heard", ...universalGreenFlags],
           translation: "She feels unseen and alone. She needs to know she matters to you.",
-          perfectResponse: "I hear you. It makes sense you’re upset. I want to slow down and really listen right now.",
+          perfectResponse: "Okay, that landed. You're right that I wasn't really listening. Say it again and I'm actually here this time.",
           tips: "Don’t fight the facts. Start with the feeling and the impact.",
           followUp: { green: "Okay… I just feel like I’m carrying this alone sometimes.", yellow: "I don’t know. I’m just frustrated.", red: "See? You’re doing it again." }
         },
@@ -1000,7 +1245,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["he's a kid", "mean", "strict", "lighten up", ...universalRedFlags],
           greenFlags: ["undermined", "alone", "bad guy", "team", "strict", "harder", "kids", ...universalGreenFlags],
           translation: "She feels alone in parenting. She needs you to be on her team.",
-          perfectResponse: "I hear you. It feels like I’m not backing you up, and that leaves you carrying it alone. I want us to be a team with the kids.",
+          perfectResponse: "Sounds like you're out there alone on this and I keep undercutting you. That's not what I want. I want us running the same play.",
           tips: "Validate the teamwork gap before you talk rules.",
           followUp: { green: "Yes. I hate being the only bad guy.", yellow: "Just back me up next time.", red: "You just want to be the fun dad." }
         },
@@ -1010,7 +1255,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["tired", "busy", "pressure", "sex", ...universalRedFlags],
           greenFlags: ["roommates", "lonely", "disconnect", "distant", "touch", "intimacy", "miss you", ...universalGreenFlags],
           translation: "She feels lonely and unwanted. She needs closeness and reassurance.",
-          perfectResponse: "I hear you. That would hurt. I don’t want you feeling alone next to me—I want to reconnect.",
+          perfectResponse: "Ouch. That's a hard thing to say out loud, and I don't want you feeling alone next to me. I miss us too.",
           tips: "Start with the pain. Don’t jump straight to logistics or sex.",
           followUp: { green: "I just miss you… I miss us.", yellow: "I don’t know what to do anymore.", red: "It feels like you don’t care." }
         },
@@ -1020,7 +1265,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["she didn't", "sensitive", "my mom", "drama", ...universalRedFlags],
           greenFlags: ["side", "alone", "defend", "hurt", "team", "support", "mom", ...universalGreenFlags],
           translation: "She feels unprotected. She needs to know you have her back.",
-          perfectResponse: "I hear you. That felt like I didn’t protect you, and that hurts. I want you to know I’m on your team.",
+          perfectResponse: "That's on me. I sat there and let it happen, and you were on your own in it. I should have said something.",
           tips: "Support your wife first. You can deal with mom later.",
           followUp: { green: "I just need to know we’re a team.", yellow: "It happens a lot.", red: "You always choose her over me." }
         },
@@ -1050,7 +1295,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["you were wrong", "facts", "joke", "sensitive", ...universalRedFlags],
           greenFlags: ["stupid", "embarrassed", "small", "friends", "public", "humiliated", ...universalGreenFlags],
           translation: "She feels humiliated. She needs to feel safe with you in public.",
-          perfectResponse: "I hear you. That was embarrassing, and I didn’t have your back. I’m sorry.",
+          perfectResponse: "Yeah, I did that. I embarrassed you in front of people and I didn't have your back. I'm sorry.",
           tips: "Public shame sticks. Validate and take responsibility.",
           followUp: { green: "I just want to feel safe with you.", yellow: "It was embarrassing.", red: "I’m not going out with you again." }
         },
@@ -1083,7 +1328,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["i was busy", "relax", "crazy", "overreacting", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "sorry", "i get it", "didn't mean", "forgot", ...universalGreenFlags],
           translation: "She feels insecure and wants reassurance that she matters to you.",
-          perfectResponse: "I hear you. That makes sense. I’m sorry—I should’ve replied. You matter to me.",
+          perfectResponse: "That's fair. I was right there on my phone and left you hanging. I'm sorry. You matter more than whatever I was scrolling.",
           tips: "Don’t debate the timeline. Reassure and reconnect.",
           followUp: { green: "Okay… thank you. I just hate feeling stupid for caring.", yellow: "Just… please respond next time.", red: "Wow. So I’m not important. Got it." }
         },
@@ -1103,7 +1348,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["you're insecure", "jealous", "calm down", "not a big deal", ...universalRedFlags],
           greenFlags: ["i hear you", "i get it", "that makes sense", "sorry", "reassure", ...universalGreenFlags],
           translation: "She feels threatened and wants clarity and reassurance.",
-          perfectResponse: "I hear you. That makes sense it would feel weird. I’m with you, and I’ll be more thoughtful about that.",
+          perfectResponse: "Yeah, I can see why that felt weird. Wasn't thinking. You're the one I'm with, and I'll be more careful with that.",
           tips: "This isn’t about the ‘like.’ It’s about safety.",
           followUp: { green: "Thank you. I just need to know I’m not competing.", yellow: "Okay. Please just be mindful.", red: "You’re acting single. It’s embarrassing." }
         },
@@ -1113,7 +1358,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["pressure", "too much", "crazy", "relax", "always", "never", ...universalRedFlags],
           greenFlags: ["i hear you", "that hurts", "i care", "i want", "reconnect", ...universalGreenFlags],
           translation: "She feels uncertain and wants reassurance and direction.",
-          perfectResponse: "I hear you. That would hurt. I do care about you, and I want to be clear and steady with you. Can we talk tonight?",
+          perfectResponse: "That has to feel awful to sit with. I do care about you, and you deserve a straight answer. Can we talk tonight?",
           tips: "Don’t dodge. Give warmth + a clear next step.",
           followUp: { green: "Yes. That’s all I’ve been asking for.", yellow: "Okay. We need to talk.", red: "If you cared, I wouldn’t have to beg." }
         },
@@ -1123,7 +1368,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["tired", "busy", "sex", "pressure", "whatever", ...universalRedFlags],
           greenFlags: ["miss you", "i hear you", "that hurts", "reconnect", "sorry", ...universalGreenFlags],
           translation: "She feels unwanted and needs closeness and reassurance.",
-          perfectResponse: "I hear you. That would hurt. I am into you—I want to be more intentional about showing you that.",
+          perfectResponse: "Man, I hate that you've been feeling that. I am into you. I've just gotten lazy about showing it, and that changes.",
           tips: "Start with the feeling, not the excuse.",
           followUp: { green: "Okay… that helps. I just miss us.", yellow: "I just want effort.", red: "It doesn’t feel like it." }
         },
@@ -1133,7 +1378,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["what tone", "sensitive", "you started", ...universalRedFlags],
           greenFlags: ["sorry", "you're right", "i hear you", "try again", ...universalGreenFlags],
           translation: "She feels hurt and needs emotional safety.",
-          perfectResponse: "You’re right. That landed harsh. I’m sorry. Let me slow down and say it differently.",
+          perfectResponse: "Yeah, that came out harsh. I'm sorry. Let me slow down and say it the way I actually meant it.",
           tips: "Own impact. Repair fast.",
           followUp: { green: "Thank you. That means a lot.", yellow: "Okay… just watch it.", red: "You always do this." }
         },
@@ -1153,7 +1398,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["not a big deal", "relax", "sensitive", ...universalRedFlags],
           greenFlags: ["invisible", "sorry", "i hear you", "that sucks", ...universalGreenFlags],
           translation: "She felt unchosen and embarrassed. She needs reassurance and repair.",
-          perfectResponse: "I hear you. That would feel awful. I’m sorry—I should’ve made it clear you’re with me.",
+          perfectResponse: "Oof. Standing there invisible while I talked to everyone would feel awful. I'm sorry. You're with me and I should have said so.",
           tips: "Public moments hit deep. Repair it directly.",
           followUp: { green: "Thank you. I just needed you to have my back.", yellow: "It just hurt.", red: "It’s like you’re ashamed of me." }
         }
@@ -1166,7 +1411,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["always", "never", "dramatic", "i'm busy", "stop", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "sorry", "miss you", "care", ...universalGreenFlags],
           translation: "They feel disconnected and want closeness and consistency.",
-          perfectResponse: "I hear you. It makes sense you’d feel hurt. I do care, and I want to be more consistent—can we pick a time to talk this week?",
+          perfectResponse: "It sounds like you've been feeling forgotten, and that's on me for going quiet. I do care. Can we lock in a time this week?",
           tips: "Family pain is usually about connection, not schedules.",
           followUp: { green: "Okay. I just miss you.", yellow: "Fine. Just actually follow through.", red: "You always say that." }
         },
@@ -1176,7 +1421,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["not my problem", "calm down", "drama", "whatever", ...universalRedFlags],
           greenFlags: ["stressful", "i get it", "makes sense", "sorry", "plan", ...universalGreenFlags],
           translation: "They feel pressured and anxious. They want clarity and relief.",
-          perfectResponse: "I hear you. That sounds stressful. I don’t want this dragging out—let me give you a clear answer by tonight.",
+          perfectResponse: "Sounds like you're stuck in the middle of this and it's stressing everybody. Let me stop dragging it out. I'll have an answer tonight.",
           tips: "Clarity calms family systems fast.",
           followUp: { green: "Thank you. That helps.", yellow: "Okay. Please don’t drag it out.", red: "You’re making this worse." }
         },
@@ -1186,7 +1431,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["you're wrong", "that's not true", "crazy", "always", ...universalRedFlags],
           greenFlags: ["sounds like", "hurt", "i hear you", "didn't mean", "sorry", ...universalGreenFlags],
           translation: "They feel insecure and judged. They want respect and connection.",
-          perfectResponse: "I hear you. It sounds like I’ve been coming across cold or judging, and that hurts. I don’t want that between us.",
+          perfectResponse: "I hear you. If I've been coming across like I'm above you, that's not what I want. You're still my family.",
           tips: "Don’t ‘correct’ their perception. Own the impact.",
           followUp: { green: "Yeah… I just want us to be good.", yellow: "Okay. Just… don’t act like that.", red: "There it is. You’re doing it again." }
         },
@@ -1196,7 +1441,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["not my problem", "you always", "never", "stupid", ...universalRedFlags],
           greenFlags: ["stressed", "hard", "i hear you", "let's figure out", "plan", ...universalGreenFlags],
           translation: "They feel overwhelmed and embarrassed. They need support and a plan.",
-          perfectResponse: "I hear you. That sounds really stressful. Let’s talk through what you need and what I can realistically do.",
+          perfectResponse: "That sounds like a lot to be carrying. Tell me what's going on and I'll be straight with you about what I can do.",
           tips: "Support doesn’t always mean ‘yes.’ It means steadiness + clarity.",
           followUp: { green: "Thank you. I just needed someone steady.", yellow: "Okay. I just need help.", red: "Wow. Forget it." }
         },
@@ -1206,7 +1451,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["shut up", "stupid", "you don't know", "always", ...universalRedFlags],
           greenFlags: ["i hear you", "i get it", "makes sense", "respect", "talk", ...universalGreenFlags],
           translation: "They feel threatened by change and want to feel respected.",
-          perfectResponse: "I hear you. I know you care about the kids. I’d like to talk about it calmly—what worries you most?",
+          perfectResponse: "I know you care about these kids. That's where this is coming from. What worries you most? I want to actually hear it.",
           tips: "Respect first. Then boundaries.",
           followUp: { green: "I just don’t want them to be soft.", yellow: "Just think about what I said.", red: "You never listen to elders." }
         },
@@ -1216,7 +1461,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["whatever", "you started", "crazy", "always", ...universalRedFlags],
           greenFlags: ["exhausting", "i hear you", "sorry", "my bad", "calm", ...universalGreenFlags],
           translation: "They feel overwhelmed and want peace and respect.",
-          perfectResponse: "I hear you. I don’t want to add stress. I’ll cool it and handle it one-on-one instead.",
+          perfectResponse: "Fair. I was adding to it and it's already exhausting for everybody. I'll drop it and handle it one-on-one instead.",
           tips: "Public conflict makes family systems explode.",
           followUp: { green: "Thank you. That’s all I wanted.", yellow: "Okay. Please do.", red: "Sure. We’ll see." }
         },
@@ -1226,7 +1471,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["none of your business", "leave me alone", "stop", ...universalRedFlags],
           greenFlags: ["i hear you", "care", "i'm not ready", "space", ...universalGreenFlags],
           translation: "They feel worried and want closeness, but you need boundaries.",
-          perfectResponse: "I hear you. I’m not trying to shut you out. I’m just not ready to share details yet, and I’ll come back when I can.",
+          perfectResponse: "I get why it looks like I'm shutting you out. I'm not. I'm just not ready to talk about it yet, and I'll come to you when I am.",
           tips: "Warm boundary = connection + limit.",
           followUp: { green: "Okay. I can respect that.", yellow: "Fine. Just… don’t disappear.", red: "So you don’t trust me." }
         },
@@ -1236,7 +1481,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["not true", "you're jealous", "always", "never", ...universalRedFlags],
           greenFlags: ["sounds like", "hard", "i hear you", "stress", ...universalGreenFlags],
           translation: "They feel behind and ashamed. They want empathy, not correction.",
-          perfectResponse: "I hear you. It sounds like you’re carrying a lot. I don’t want you feeling alone in that.",
+          perfectResponse: "Sounds like you're carrying a lot right now, and I don't want you doing it alone. What's actually going on?",
           tips: "Don’t ‘defend your resume.’ Just be human.",
           followUp: { green: "Thanks. That actually helps.", yellow: "Yeah. It’s been rough.", red: "Whatever. You don’t get it." }
         }
@@ -1249,7 +1494,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["relax", "calm down", "not my job", "whatever", "stop", ...universalRedFlags],
           greenFlags: ["i hear you", "sorry", "my bad", "on it", "thanks", "understand", "makes sense", ...universalGreenFlags],
           translation: "They feel blocked and stressed. They need clarity and a plan.",
-          perfectResponse: "I hear you. Sorry for the delay. I can send it by 2 PM—does that work, or do you need a smaller piece sooner?",
+          perfectResponse: "Got it, and that's on me for going quiet. I can have it to you by 2 PM. Do you need a piece of it sooner?",
           tips: "Work repair = ownership + timeline + options.",
           followUp: { green: "Thanks. 2 PM works.", yellow: "Please send whatever you have ASAP.", red: "This is becoming a pattern." }
         },
@@ -1269,7 +1514,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["calm down", "not a big deal", "you're wrong", "always", ...universalRedFlags],
           greenFlags: ["i hear you", "sorry", "credit", "my bad", "respect", ...universalGreenFlags],
           translation: "They feel disrespected. They need acknowledgment and repair.",
-          perfectResponse: "I hear you. You’re right to be upset. I should’ve given you clear credit. I’m sorry—how do you want me to fix it?",
+          perfectResponse: "You're right, and I'd be upset too. That was your work and I should have said so. How do you want me to fix it?",
           tips: "Name the wrong. Offer repair.",
           followUp: { green: "Thank you. Please clarify it with the team.", yellow: "Just… don’t do it again.", red: "This makes me not trust you." }
         },
@@ -1279,7 +1524,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["stop", "annoying", "relax", "whatever", ...universalRedFlags],
           greenFlags: ["sorry", "i hear you", "blocked", "on it", "thanks", ...universalGreenFlags],
           translation: "They feel stuck and ignored. They need a quick update.",
-          perfectResponse: "I hear you. Sorry for the delay. I’m on it now—give me 20 minutes and I’ll send an update.",
+          perfectResponse: "Sorry, I left you blocked and that's not okay. I'm on it right now. I'll have an update to you within 20 minutes.",
           tips: "A short update prevents escalation.",
           followUp: { green: "Thanks. Appreciate it.", yellow: "Okay. Please just update me.", red: "This is really frustrating." }
         },
@@ -1299,7 +1544,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["not my fault", "i was busy", "whatever", ...universalRedFlags],
           greenFlags: ["sorry", "my bad", "i hear you", "behind", "fix", ...universalGreenFlags],
           translation: "They feel stressed and want reliability.",
-          perfectResponse: "You’re right. That put you behind. I’m sorry. What’s the fastest way I can get caught up and unblock the next step?",
+          perfectResponse: "My fault. That put you behind and I'm sorry. What's the fastest way to get caught up and unblock the next step?",
           tips: "Own it. Then solve.",
           followUp: { green: "Thanks. Here’s what we need.", yellow: "We’ll need to redo a piece.", red: "This keeps happening." }
         },
@@ -1309,7 +1554,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["always", "never", "relax", "not my problem", ...universalRedFlags],
           greenFlags: ["i hear you", "too much", "sorry", "plan", "fair", ...universalGreenFlags],
           translation: "They feel overwhelmed and resentful. They need fairness and boundaries.",
-          perfectResponse: "I hear you. That’s not fair to you. Let’s get clear on what’s yours vs mine so you’re not carrying extra.",
+          perfectResponse: "Fair point. That's not sustainable and it shouldn't be landing on you. Let's split out what's mine so you're not covering it.",
           tips: "Validate workload pain first, then clarify roles.",
           followUp: { green: "Thank you. That’s exactly it.", yellow: "Okay. We need to clarify it.", red: "You always do this." }
         },
@@ -1319,7 +1564,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["what did i do", "you're wrong", "calm down", ...universalRedFlags],
           greenFlags: ["i hear you", "sorry", "understand", "talk", "fix", ...universalGreenFlags],
           translation: "They feel concerned and want accountability and safety.",
-          perfectResponse: "I hear you. I’m open to feedback. What part felt not okay, so I can understand and fix it?",
+          perfectResponse: "Understood. I'd rather hear it than not. What part landed wrong, so I know what to fix?",
           tips: "Curiosity first. Defense later (if ever).",
           followUp: { green: "Thanks. Here’s what happened.", yellow: "Okay. I’ll explain.", red: "You’re not taking this seriously." }
         }
@@ -1334,7 +1579,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["been busy", "relax", "stop nagging", ...universalRedFlags],
           greenFlags: ["i hear you", "waiting", "makes sense", "frustrated", "plan", "together", ...universalGreenFlags],
           translation: "She feels like she's carrying the mental load alone. She needs to feel like a team.",
-          perfectResponse: "I hear you. You've been carrying that alone and I kept putting it off. Let's sit down tonight and actually make a plan.",
+          perfectResponse: "Fair. You've been asking for weeks and I kept pushing it off. Let's sit down tonight and actually book something.",
           tips: "Don't defend the delay. Validate the effort she's been making.",
           followUp: { green: "Thank you. That's all I've been wanting.", yellow: "Okay. Tonight. For real.", red: "I'll believe it when I see it." }
         },
@@ -1344,7 +1589,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["it slipped", "relax", "not a big deal", "always", ...universalRedFlags],
           greenFlags: ["i dropped the ball", "that's on me", "sorry", "makes sense", "let you down", ...universalGreenFlags],
           translation: "She feels like she doesn't matter enough to remember. She needs to feel like a priority.",
-          perfectResponse: "You're right. That's on me. I dropped the ball and I get why that's frustrating. I'll fix it now.",
+          perfectResponse: "Yeah, I dropped that. I get why it's frustrating when you only asked for one thing. I'm handling it now.",
           tips: "Skip the excuse. Own it clean and offer to fix it immediately.",
           followUp: { green: "Just please follow through.", yellow: "Fine. It's whatever.", red: "I'm tired of asking." }
         },
@@ -1354,7 +1599,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["you're not invisible", "you're overreacting", "i notice", ...universalRedFlags],
           greenFlags: ["invisible", "exhausted", "unseen", "i hear you", "thank you", "appreciate", ...universalGreenFlags],
           translation: "She feels taken for granted. She needs acknowledgment and to feel seen.",
-          perfectResponse: "I hear you. You carry so much and I haven't said it enough—what you do for this family matters. Thank you.",
+          perfectResponse: "I can imagine how lonely that feels. You hold this whole thing together and I don't say it enough. Thank you. I mean that.",
           tips: "Name specific things she does. Generic 'I appreciate you' doesn't land.",
           followUp: { green: "That actually means a lot.", yellow: "I just needed to hear that.", red: "It doesn't feel like it most of the time." }
         },
@@ -1364,7 +1609,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["i'm just", "relax", "it's work", "you too", ...universalRedFlags],
           greenFlags: ["you're right", "disconnected", "i hear you", "here now", "phone down", ...universalGreenFlags],
           translation: "She feels like she's competing with a screen. She needs your full presence.",
-          perfectResponse: "You're right. I haven't been fully here. I'm putting it down—you have my full attention.",
+          perfectResponse: "Yeah, I haven't been fully here. Putting it down right now. You've got my attention.",
           tips: "Don't argue about the phone. Show up right now.",
           followUp: { green: "Thank you. That's all I want.", yellow: "Okay. Let's try.", red: "You'll just pick it back up." }
         },
@@ -1374,7 +1619,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["i said sorry", "what do you want", "always", "never", ...universalRedFlags],
           greenFlags: ["i hear you", "you're right", "pattern", "different this time", "change", ...universalGreenFlags],
           translation: "She's lost trust in your words. She needs to see proof through action, not just apologies.",
-          perfectResponse: "I hear you. The apologies without change mean nothing. What would actually make a difference to you?",
+          perfectResponse: "That's fair. Sorry without change is just noise at this point. Tell me the one thing that would actually be different.",
           tips: "Ask what she needs. Then follow through. Action beats apology.",
           followUp: { green: "I need you to actually do what you say.", yellow: "I don't know anymore.", red: "Nothing, apparently." }
         },
@@ -1394,7 +1639,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["here we go", "overreacting", "everything is fine", ...universalRedFlags],
           greenFlags: ["i hear you", "disconnected", "that hurts", "want us", "reconnect", "together", ...universalGreenFlags],
           translation: "She feels like the relationship has gone on autopilot. She wants a partner who's building something with her.",
-          perfectResponse: "I hear you. That would scare me too. I don't want to just coexist—I want to build with you. Can we talk about what that looks like?",
+          perfectResponse: "Whoa. Honestly, that scares me too. I don't want to just coexist with you. Can we talk about what we're actually building?",
           tips: "Don't defend. Invite the conversation and show up to it.",
           followUp: { green: "Yes. That's what I've been needing.", yellow: "I hope so.", red: "That would require you to actually be present." }
         }
@@ -1407,7 +1652,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["that's not true", "relax", "you're jealous", "always", ...universalRedFlags],
           greenFlags: ["i hear you", "that stings", "sorry", "makes sense", "time", "priority", ...universalGreenFlags],
           translation: "She feels like she's not a priority. She wants to feel chosen.",
-          perfectResponse: "I hear you. It makes sense that stings. I want you to feel chosen—let's make real plans this week.",
+          perfectResponse: "I can see why that stings. You should feel chosen, not squeezed in. Let's put something real on the calendar this week.",
           tips: "Don't argue time percentages. Make her feel wanted.",
           followUp: { green: "Okay. I just want to feel like I matter.", yellow: "Fine. Let's actually do it.", red: "You say that and then cancel." }
         },
@@ -1417,7 +1662,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["pressure", "too fast", "chill", "not ready", ...universalRedFlags],
           greenFlags: ["i hear you", "that makes sense", "want that too", "talk", "plan", ...universalGreenFlags],
           translation: "She wants clarity on the future and doesn't want to feel strung along.",
-          perfectResponse: "I hear you. That's a fair question and you deserve a real answer. Can we talk tonight about where we're both at?",
+          perfectResponse: "That's a fair question and you deserve a real answer, not another maybe. Can we talk tonight about where we both are?",
           tips: "She wants a real conversation, not a dodge.",
           followUp: { green: "Yes. That's all I've been asking for.", yellow: "Okay. Tonight.", red: "I can't keep waiting on you." }
         },
@@ -1437,7 +1682,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["of course", "you're too sensitive", "i show it", "whatever", ...universalRedFlags],
           greenFlags: ["you're right", "i hear you", "that matters", "i love you", "i'll do better", ...universalGreenFlags],
           translation: "She feels like she's loving harder. She needs to feel loved back—not just in actions, but in words.",
-          perfectResponse: "You're right. I haven't been saying it first and that matters. I love you—and I'm going to be better about showing it.",
+          perfectResponse: "That's a fair hit. I haven't been saying it first and it matters. I love you, and I'm going to be better about showing it.",
           tips: "Say the words. Then follow through.",
           followUp: { green: "Thank you. That means a lot.", yellow: "Okay. I love you too.", red: "I'll believe it when I see it." }
         },
@@ -1447,7 +1692,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["your ex", "then go back", "never good enough", ...universalRedFlags],
           greenFlags: ["i hear you", "that's fair", "effort", "want to", "show up", ...universalGreenFlags],
           translation: "She's not actually missing her ex — she wants more effort and initiative from you.",
-          perfectResponse: "I hear you. You want more effort and initiative — that's fair. I want to give you that. What would mean the most to you?",
+          perfectResponse: "Okay, that stung a little, but you're not wrong. You want effort and initiative. What would mean the most to you?",
           tips: "Don't react to the ex mention. Focus on what she's actually asking for.",
           followUp: { green: "That's all I want. To feel like you're trying.", yellow: "Just surprise me sometimes.", red: "I shouldn't have to ask." }
         }
@@ -1490,7 +1735,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["relax", "it's not that much", "always", "stop", ...universalRedFlags],
           greenFlags: ["you're right", "i owe you", "plan", "i hear you", "my bad", ...universalGreenFlags],
           translation: "They feel disrespected and taken advantage of. They need a real plan and accountability.",
-          perfectResponse: "You're right. I owe you and I've been dragging it. I'll send you something this week — can we agree on a plan right now?",
+          perfectResponse: "No excuse for that. I owe you and I've been dragging it. I'll send something this week. Can we set the plan right now?",
           tips: "Don't minimize the amount. Give a concrete timeline.",
           followUp: { green: "Yes. I just need a real plan.", yellow: "Okay. This week.", red: "I'll believe it when it hits my account." }
         },
@@ -1500,7 +1745,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["not true", "you're exaggerating", "let it go", ...universalRedFlags],
           greenFlags: ["i hear you", "that hurt", "makes sense", "didn't realize", "hard", ...universalGreenFlags],
           translation: "They carry real pain from childhood. They want to be heard, not corrected.",
-          perfectResponse: "I hear you. That hurt you more than I knew. I'm sorry you felt that—I don't want that pain between us.",
+          perfectResponse: "I didn't know it hit you that hard, and I'm sorry it did. That's not something I want sitting between us. I want to hear it.",
           tips: "Don't debate the past. Validate the wound.",
           followUp: { green: "I just needed you to hear me.", yellow: "It's just something I carry.", red: "You never got it." }
         }
@@ -1513,7 +1758,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["calm down", "you'll get the next one", "not my decision", "whatever", ...universalRedFlags],
           greenFlags: ["i hear you", "that stings", "makes sense", "frustrating", "understand", ...universalGreenFlags],
           translation: "They feel unseen and resentful. They need to feel acknowledged.",
-          perfectResponse: "I hear you. That stings, and it makes sense you're frustrated. You've put in real work.",
+          perfectResponse: "That stings, and it makes sense you're frustrated. You've put in real work and it shouldn't go unseen.",
           tips: "Don't minimize or fix. Acknowledge the frustration first.",
           followUp: { green: "Thank you. I just needed someone to acknowledge it.", yellow: "I just need to figure out my next move.", red: "Don't try to manage me right now." }
         },
@@ -1523,7 +1768,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["that's not what i said", "calm down", "you're wrong", "overreacting", ...universalRedFlags],
           greenFlags: ["i hear you", "that felt like a betrayal", "sorry", "my bad", "shouldn't have", ...universalGreenFlags],
           translation: "They feel betrayed and need to know they can trust you.",
-          perfectResponse: "I hear you. That felt like a betrayal, and I should've handled it differently. I'm sorry.",
+          perfectResponse: "That felt like a betrayal, and it should have. I should have handled it differently in that room. I'm sorry.",
           tips: "If any part of it is true, own it. Don't fight the whole thing.",
           followUp: { green: "Thank you. I just need to trust you.", yellow: "Just don't do it again.", red: "I won't forget this." }
         },
@@ -1533,7 +1778,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["not a big deal", "i forgot", "you wouldn't have added much", ...universalRedFlags],
           greenFlags: ["you're right", "should have included you", "my bad", "i hear you", "fix", ...universalGreenFlags],
           translation: "They feel sidelined and disrespected. They need to be included and valued.",
-          perfectResponse: "You're right. That decision affects you and you should've been in the room. My bad — I'll loop you in going forward.",
+          perfectResponse: "Fair point. That decision affects you and you should have been in the room. My bad. I'll loop you in going forward.",
           tips: "Own the oversight. Don't explain it away.",
           followUp: { green: "Thank you. I just need to be in the loop.", yellow: "Please make sure it doesn't happen again.", red: "This is why I don't trust the process here." }
         },
@@ -1553,7 +1798,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
           redFlags: ["everyone is busy", "figure it out", "not my fault", "whatever", ...universalRedFlags],
           greenFlags: ["i hear you", "that's not sustainable", "too much", "makes sense", "let's fix", ...universalGreenFlags],
           translation: "They're burning out and feel unheard. They need to know the workload is being taken seriously.",
-          perfectResponse: "I hear you. That's not sustainable and you've been saying it. Let's look at the actual list and figure out what to cut or hand off.",
+          perfectResponse: "You have been saying it and nothing moved. That's not sustainable. Let's go through the list and figure out what gets cut or handed off.",
           tips: "Don't minimize the load. Offer a concrete next step.",
           followUp: { green: "Thank you. That's all I needed.", yellow: "Okay. Let's do that.", red: "I've been asking for weeks." }
         }
@@ -1580,6 +1825,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
     let pendingWinPerfect = "";
 
     function resetProgressState() {
+      resetOpenerVariety();
       gradeHistory = [];
       consecutiveReds = 0;
       scenarioWon = false;
@@ -1859,8 +2105,14 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
       const cfg = personConfig[practicePerson] || {};
       const person = (cfg.label || "Wife ❤️").replace(/\s*[❤️💛💜👪💼]/g, '').trim();
       const persona = wifePersona.charAt(0).toUpperCase() + wifePersona.slice(1);
-      el.innerText = `AI Mode (${person} • ${persona})`;
-      el.className = "text-blue-500 font-semibold text-xs";
+      const left = aiRepsRemaining();
+      if (left > 0) {
+        el.innerText = `AI Mode (${person} • ${persona}) — ${left} left today`;
+        el.className = "text-blue-500 font-semibold text-xs";
+      } else {
+        el.innerText = `Quick Feedback (${person} • ${persona}) — AI resets tomorrow`;
+        el.className = "text-gray-500 font-semibold text-xs";
+      }
     }
 
     // CUSTOM MODAL
@@ -2083,7 +2335,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
         theirEmotionNeed: theirEmotionNeed || "They likely feel hurt or stressed and want to feel understood.",
         yourEmotionNeed: yourEmotionNeed || "You likely want calm, clarity, and direction.",
         translation: translation || "There is a deeper feeling and need under these words.",
-        perfectResponse: perfectResponse || "I hear you. That makes sense. Help me understand what you need most right now.",
+        perfectResponse: perfectResponse || "That makes sense. Help me understand what you need most from me right now.",
         summary: summary || "Start by naming the feeling under the words."
       };
     }
@@ -2155,20 +2407,20 @@ Return JSON ONLY:
       const role = practicePerson;
       if (role === 'coworker') {
         return {
-          perfectResponse: "I hear you. Thanks for flagging it. You’re right to call it out. What do you need from me first so we’re aligned?",
+          perfectResponse: "Thanks for flagging it. You're right to call it out, and I'd rather know. What do you need from me first so we're aligned?",
           tips: "Stay professional: own impact, clarify, and propose a timeline.",
           translation: "They’re stressed and need clarity and follow-through."
         };
       }
       if (role === 'family') {
         return {
-          perfectResponse: "I hear you. That makes sense. I don’t want us fighting. Help me understand what you need from me.",
+          perfectResponse: "That makes sense, and I don't want us fighting about it. Help me understand what you need from me here.",
           tips: "Warm boundary: validate the feeling, then get clear on what’s needed.",
           translation: "They’re hurt and want connection, respect, or reassurance."
         };
       }
       return {
-        perfectResponse: "I hear you. That makes sense. I want us on the same team. Help me understand what you need right now.",
+        perfectResponse: "Okay, that landed. I want us on the same team, not on opposite sides of this. What do you need from me right now?",
         tips: "Slow it down. Name the feeling first. Stay on their side.",
         translation: "They’re hurting and need reassurance, connection, or safety."
       };
@@ -2191,12 +2443,16 @@ Return JSON ONLY:
       try {
         let decoded;
         try {
+          if (!aiAvailable()) throw new Error('daily AI cap reached');
+          recordAiRep();
           decoded = await analyzeCustomIntake(input, customImageDataUrl);
         } catch (e) {
           console.warn("Custom intake analysis failed", e);
           if (input) decoded = fallbackCustomDecodeFromText(input);
           else {
-            setCustomUploadStatus("Couldn’t read the screenshot. Try another image or paste text.", true);
+            setCustomUploadStatus(aiAvailable()
+              ? "Couldn't read the screenshot. Try another image or paste text."
+              : "Screenshot reading needs AI, and today's is used up. Paste the text instead.", true);
             return;
           }
         }
@@ -2271,9 +2527,15 @@ Return JSON ONLY:
       document.getElementById('feedback-translation').innerText = `"${currentTranslation}"`;
       document.getElementById('feedback-translation').parentElement.classList.remove('hidden');
 
+      updateQuickModeNote();
+
       const requestId = nextAITurnRequestId();
-      if (aiEnabled) analyzeWithGemini(activeScenario, text, requestId);
-      else setTimeout(() => analyzeResponseLocal(text), 600);
+      if (aiAvailable()) {
+        recordAiRep();
+        analyzeWithGemini(activeScenario, text, requestId);
+      } else {
+        setTimeout(() => analyzeResponseLocal(text), 600);
+      }
     }
 
     // LOCAL ANALYSIS
@@ -2307,7 +2569,7 @@ Return JSON ONLY:
         feedback = { grade: 'green', title: 'Grounded ✅', badgeColor: 'bg-green-100 text-green-800', message: `Good work. You led with validation (“${greenHits[0] || 'the feeling'}”).` };
       } else {
         lastGrade = 'yellow';
-        feedback = { grade: 'yellow', title: 'Close 👍', badgeColor: 'bg-yellow-100 text-yellow-800', message: "Decent start. Add: “I hear you” + name one feeling." };
+        feedback = { grade: 'yellow', title: 'Close 👍', badgeColor: 'bg-yellow-100 text-yellow-800', message: "Decent start. Name the feeling first, then say what you'll actually do." };
       }
 
       processFeedbackAndMaybeWin(feedback, activeScenario.perfectResponse, currentTranslation);
@@ -2328,7 +2590,8 @@ Return JSON ONLY:
         };
         script.onerror = function() { cleanup(); reject(new Error('Network error')); };
         const tier = options.tier ? '&tier=' + encodeURIComponent(options.tier) : '';
-        script.src = GAS_PROXY_URL + '?action=gemini&callback=' + cbName + tier + '&prompt=' + encodeURIComponent(prompt);
+        const temp = (typeof options.temp === 'number') ? '&temp=' + encodeURIComponent(String(options.temp)) : '';
+        script.src = GAS_PROXY_URL + '?action=gemini&callback=' + cbName + tier + temp + '&prompt=' + encodeURIComponent(prompt);
         document.head.appendChild(script);
       });
     }
@@ -2458,6 +2721,8 @@ GRADING RULES:
 - Respectful space without validation or return plan is YELLOW.
 - Attacks, insults, contempt, stonewalling, abandonment, "leave me alone", "whatever", "I'm done", "stop bothering me", or pure fact-defense like "No I didn't" are RED.
 
+${buildOpenerInstruction(scenario)}
+
 Return valid JSON ONLY:
 {
   "grade": "green"|"yellow"|"red",
@@ -2472,7 +2737,7 @@ Return valid JSON ONLY:
       const systemPrompt = buildCombinedTurnPrompt(scenario, userText);
 
       try {
-        const response = await callGemini(systemPrompt, { tier: "fast" });
+        const response = await callGemini(systemPrompt, { tier: "fast", temp: 0.5 });
         if (requestId !== aiTurnRequestId) return;
 
         let json = parseGeminiJson(response);
@@ -2687,6 +2952,12 @@ ${behaviorGuide}`;
           return;
         }
 
+        if (!aiAvailable()) {
+          applyInitialDecoderResult(fallbackCustomDecodeFromText(wifeText), wifeText);
+          return;
+        }
+        recordAiRep();
+
         const personaHint = buildAIPersonaPrompt();
         const voicePrompt = philVoicePrompt();
 
@@ -2732,7 +3003,7 @@ Return JSON ONLY:
         if (t.includes("deadline") || t.includes("eod") || t.includes("blocked") || t.includes("need") || t.includes("asap")) {
           return {
             translation: "They’re stressed and need clarity and follow-through.",
-            perfectResponse: "I hear you. Sorry for the delay. Here’s my timeline, and I’ll send an update if anything changes."
+            perfectResponse: "Got it, and sorry for the delay. Here's my timeline, and I'll send an update if anything changes."
           };
         }
         if (t.includes("rude") || t.includes("tone") || t.includes("not okay")) {
@@ -2746,7 +3017,7 @@ Return JSON ONLY:
       if (t.includes("never") || t.includes("always") || t.includes("don't care") || t.includes("listen") || t.includes("ignoring")) {
         return {
           translation: "They feel unseen, and they need to know you’re actually with them.",
-          perfectResponse: "I hear you. That makes sense. What part hit you the hardest?"
+          perfectResponse: "Sounds like you've been feeling that for a while. What part of it hit you hardest?"
         };
       }
       if (t.includes("kids") || t.includes("house") || t.includes("everything") || t.includes("help") || t.includes("too much")) {
@@ -2770,7 +3041,7 @@ Return JSON ONLY:
 
       return {
         translation: "They’re carrying a strong feeling and want you to stay present and on their side.",
-        perfectResponse: "I hear you. That makes sense. Help me understand what you need most right now."
+        perfectResponse: "That's a lot to be carrying. Help me understand what you need most from me right now."
       };
     }
 
@@ -2916,7 +3187,7 @@ Return JSON ONLY:
       document.getElementById('typing-indicator').classList.remove('hidden');
       scrollToBottom();
 
-      if (aiEnabled) generateReplyWithGemini();
+      if (aiAvailable()) generateReplyWithGemini();
       else fallbackReply();
     }
 
@@ -2955,7 +3226,7 @@ Return JSON ONLY:
       document.getElementById('feedback-perfect').innerText =
         (perfectResponseFromAI && String(perfectResponseFromAI).trim())
           ? polishGroundedResponse(String(perfectResponseFromAI).trim())
-          : polishGroundedResponse((activeScenario && activeScenario.perfectResponse) ? activeScenario.perfectResponse : "I hear you. That makes sense. Help me understand what you need right now.");
+          : polishGroundedResponse((activeScenario && activeScenario.perfectResponse) ? activeScenario.perfectResponse : "That makes sense. Help me understand what you need from me right now.");
 
       const left = document.getElementById('feedback-btn-left');
       const right = document.getElementById('feedback-btn-right');
@@ -3003,7 +3274,7 @@ Return JSON ONLY:
         `"Reset move: name the emotion, own the impact, then ask one calm question."`;
 
       document.getElementById('feedback-perfect').innerText =
-        "I hear you. That makes sense. I’m sorry for how that landed. What do you need right now?";
+        "Okay, that came out wrong and I'm sorry for how it landed. What do you need from me right now?";
 
       const left = document.getElementById('feedback-btn-left');
       const right = document.getElementById('feedback-btn-right');
@@ -3068,7 +3339,12 @@ Return JSON ONLY:
       selfDecodeBusy = true;
       let result;
       try {
-        result = aiEnabled ? await runSelfDecodeAI(text) : localSelfDecode(text);
+        if (aiAvailable()) {
+          recordAiRep();
+          result = await runSelfDecodeAI(text);
+        } else {
+          result = localSelfDecode(text);
+        }
       } catch (e) {
         result = localSelfDecode(text);
       }
@@ -3121,7 +3397,7 @@ Return JSON ONLY:
       const json = parseGeminiJson(response);
       return {
         translation: json.translation,
-        perfectResponse: polishGroundedResponse(json.perfectResponse),
+        perfectResponse: json.perfectResponse,
         summary: json.summary
       };
     }
