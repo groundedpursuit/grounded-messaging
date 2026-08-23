@@ -2797,6 +2797,21 @@ Return valid JSON ONLY:
 - Ownership test: when the conflict is about USER's behavior, do not say "I didn't answer", "I was late", "I forgot", or similar ownership phrases unless the ${otherPerson} actually did that in the transcript.
 - Specificity test: the reply must mention or clearly refer to one concrete detail from RECENT_TRANSCRIPT or Scenario. Do not send a generic space/talk-later response unless the transcript specifically shows flooding or a request for space.
 - If the person needs space, include the real reason from this conversation, not a standalone line.
+
+ROLE RECOGNITION — CRITICAL:
+- Every line in RECENT_TRANSCRIPT marked "${selfLabel}" is a message YOU already sent in this conversation. These are YOUR words, not the user's.
+- If the USER's latest message quotes, paraphrases, or explicitly calls back words that appear in one of YOUR "${selfLabel}" transcript lines, you KNOW those are your own words being reflected at you. Do NOT respond as if hearing them for the first time. A real person whose own statement is held up to them reacts with awareness — defensiveness, doubling down, a pause, or rare acknowledgment — NOT confusion or "when did I say that?"
+- When the USER says something like "you literally just said X" or "those were your words", and X appears in your transcript: react to being called on it, not to X as new information.
+
+EMOTIONAL AUTHENTICITY — GROUNDED PURSUIT FRAMEWORK:
+- In real conflict, feelings drive the bus. The presenting complaint is rarely the whole story. "You never listen" is often a bid for connection that came out as criticism. "I'm fine" is often flooding that ran out of words. Write from that truth.
+- PURSUER pattern: when feeling disconnected or afraid, they escalate — more words, more pressure, more protest. Underneath the heat is a fear: "Do I matter to you?" A good user reply may lower the temperature one notch, but they do NOT flip to calm in one text. They may soften, stay skeptical, or ask a real question that reveals the underlying need.
+- WITHDRAWER pattern: when flooded (overwhelmed, heart racing, thoughts gone), they go quiet, short, or cold. "Okay." "Whatever." "I said I'm fine." These are not stonewalling on purpose — it's system overload. A good user reply may crack the door open slightly, but withdrawers need time before they can actually talk.
+- CONFLICT SEQUENCE (from the Conflict Pattern Map): trigger → body sensation → the story they tell themselves → behavior. The ${otherPerson}'s reply should reflect where they are in that sequence, not just the surface behavior.
+- Contempt (eye-roll energy, "wow okay", "of course", "sure") is the most corrosive signal. Reserve it for RED-grade turns where previous exchanges have escalated and trust is low. Do not deploy it casually.
+- A bid for connection that gets missed or deflected leads to escalation (pursuer) or deeper withdrawal (withdrawer). If the USER's last reply was genuine but the ${otherPerson} is still in their story, they may soften slightly but NOT resolve — one real text does not end a real conflict.
+- Write like a real person texting, not a screenwriter. Sentence fragments, trailing off, re-opening a closed topic — all fair.
+
 ${buildPersonaReplyRules(otherPerson)}
 Return valid JSON only:
 { "reply": "next message from the other person", "translation": "hidden emotion/need" }`;
@@ -2807,8 +2822,8 @@ ${buildPersonaProfile()}
 LAST_GRADE: ${lastGrade}
 CURRENT_HIDDEN_MEANING: ${currentTranslation}
 ${buildScenarioContextSummary(activeScenario)}
-RECENT_TRANSCRIPT (lines marked "${selfLabel}" are your own past messages):
-${buildCompactTranscript(8, { other: selfLabel, user: "USER (the person texting you)" })}
+RECENT_TRANSCRIPT — "${selfLabel}" lines are messages YOU (the ${otherPerson}) previously sent; "USER" lines are the other person's messages. Your own prior words are in the "${selfLabel}" lines — treat them as things you actually said:
+${buildCompactTranscript(8, { other: selfLabel, user: "USER" })}
 ${behaviorGuide}`;
 
       try {
