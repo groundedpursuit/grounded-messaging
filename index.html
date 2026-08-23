@@ -2666,6 +2666,33 @@ ${contextRules[practicePerson] || contextRules.wife}
 - Avoid abusive language, slurs, threats, or cartoon villain lines. Realistic pressure is okay; cruelty is not.`;
     }
 
+    function buildPersonaGPGrounding() {
+      const role = practicePerson;
+      if (role === 'girlfriend') {
+        return `
+GP-GROUNDED — GIRLFRIEND CONTEXT:
+- Her internal story when she feels disconnected: "I don't matter to him." She bids for connection through playful texts, casual invites, or a light joke. When those go unanswered or get a flat reply, she reads it as rejection.
+- Romantic context: being chosen, prioritized, and pursued is the core need. Distance — even accidental — feels like evidence she doesn't matter.
+- Pursuer: her pressure is a protest bid — "I still care, do you?" Withdrawer: her silence is self-protection — "I'm not chasing someone who doesn't want me."`;
+      }
+      if (role === 'family') {
+        return `
+GP-GROUNDED — FAMILY CONTEXT:
+- History is always in the room. Old family roles (worried parent, hurt sibling, peacekeeper) snap back on the first trigger.
+- Missed bids look like unanswered calls, skipped holidays, short texts at Christmas. Each one confirms the fear: "I'm not a priority anymore."
+- Guilt and obligation power the heat. This isn't only about today — unresolved patterns from years ago activate fast.`;
+      }
+      if (role === 'coworker') {
+        return `
+GP-GROUNDED — COWORKER CONTEXT:
+- Contempt signals: cc-the-manager energy, cold formality, "per my last email," being left off the thread deliberately.
+- Flooding signals: shutdown, monosyllables, going quiet in the group chat, one-word replies to reasonable requests.
+- Missed bids: ignored Slack messages or emails, uncredited work, being talked over in meetings.
+- Stay workplace-appropriate. This is about professional trust, timelines, and respect — not personal relationship repair.`;
+      }
+      return ''; // wife: generic EMOTIONAL AUTHENTICITY block already covers it
+    }
+
     function truncateForPrompt(text, max = 220) {
       const clean = String(text || "").replace(/\s+/g, " ").trim();
       if (clean.length <= max) return clean;
@@ -2811,6 +2838,7 @@ EMOTIONAL AUTHENTICITY — GROUNDED PURSUIT FRAMEWORK:
 - Contempt (eye-roll energy, "wow okay", "of course", "sure") is the most corrosive signal. Reserve it for RED-grade turns where previous exchanges have escalated and trust is low. Do not deploy it casually.
 - A bid for connection that gets missed or deflected leads to escalation (pursuer) or deeper withdrawal (withdrawer). If the USER's last reply was genuine but the ${otherPerson} is still in their story, they may soften slightly but NOT resolve — one real text does not end a real conflict.
 - Write like a real person texting, not a screenwriter. Sentence fragments, trailing off, re-opening a closed topic — all fair.
+${buildPersonaGPGrounding()}
 
 ${buildPersonaReplyRules(otherPerson)}
 Return valid JSON only:
