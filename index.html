@@ -362,13 +362,8 @@
       <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl m-4">
         <h2 id="custom-modal-title" class="text-xl font-bold mb-2">Create Scenario</h2>
         <p id="custom-modal-hint" class="text-gray-500 text-sm mb-3">Type or paste a custom message.</p>
-        <textarea id="custom-input" onpaste="handleCustomPasteImage(event)" class="w-full border border-gray-300 rounded-lg p-3 text-base mb-3 focus:ring-2 focus:ring-blue-500 focus:outline-none" rows="4" placeholder="Paste text here..."></textarea>
-
-        <input id="custom-image-input" type="file" accept="image/*" class="hidden" onchange="handleCustomImageSelect(event)">
-        <button onclick="triggerCustomImageUpload()" class="w-full py-2.5 mb-2 bg-gray-100 rounded-lg font-semibold text-gray-700 active:bg-gray-200">
-          Upload Screenshot
-        </button>
-        <p id="custom-upload-status" class="text-xs text-gray-500 mb-3">No screenshot selected</p>
+        <textarea id="custom-input" class="w-full border border-gray-300 rounded-lg p-3 text-base mb-2 focus:ring-2 focus:ring-blue-500 focus:outline-none" rows="4" placeholder="Paste text here..."></textarea>
+        <p id="custom-upload-status" class="text-xs text-gray-500 mb-3"></p>
 
         <div class="flex gap-2">
           <button onclick="closeCustomScenarioModal()" class="flex-1 py-3 bg-gray-100 rounded-lg font-semibold text-gray-700 active:bg-gray-200">Cancel</button>
@@ -699,60 +694,32 @@
     // SELF-DECODE state
     let selfDecodeBusy = false;
     let customScenarioBusy = false;
-    let customImageDataUrl = "";
-    let customImageName = "";
 
+    // Both hints were the same sentence repeated in all four entries, so they
+    // live here once and only the parts that actually differ are per-person.
+    const CUSTOM_HINT = "Type or paste a custom message.";
     const personConfig = {
-      wife: {
-        label: "Wife ❤️",
-        noun: "wife",
-        avatar: "W",
-        newSimHint: "Type or paste a custom message.",
-        customHint: "Type or paste a custom message.",
-        customPlaceholder: "Ex: You never listen to me..."
-      },
-      girlfriend: {
-        label: "Girlfriend 💜",
-        noun: "girlfriend",
-        avatar: "G",
-        newSimHint: "Type or paste a custom message.",
-        customHint: "Type or paste a custom message.",
-        customPlaceholder: "Ex: Are you ignoring me?"
-      },
-      family: {
-        label: "Family Member 👪",
-        noun: "family member",
-        avatar: "F",
-        newSimHint: "Type or paste a custom message.",
-        customHint: "Type or paste a custom message.",
-        customPlaceholder: "Ex: You never call anymore."
-      },
-      coworker: {
-        label: "Coworker 💼",
-        noun: "coworker",
-        avatar: "C",
-        newSimHint: "Type or paste a custom message.",
-        customHint: "Type or paste a custom message.",
-        customPlaceholder: "Ex: Can you send that by EOD?"
-      }
+      wife:       { label: "Wife ❤️",           noun: "wife",          avatar: "W", customPlaceholder: "Ex: You never listen to me..." },
+      girlfriend: { label: "Girlfriend 💜",     noun: "girlfriend",    avatar: "G", customPlaceholder: "Ex: Are you ignoring me?" },
+      family:     { label: "Family Member 👪",  noun: "family member", avatar: "F", customPlaceholder: "Ex: You never call anymore." },
+      coworker:   { label: "Coworker 💼",       noun: "coworker",      avatar: "C", customPlaceholder: "Ex: Can you send that by EOD?" }
     };
 
-    function getPersonLabel() {
-      return (personConfig[practicePerson] && personConfig[practicePerson].label) ? personConfig[practicePerson].label : "Wife ❤️";
+    function personField(key, fallback) {
+      const cfg = personConfig[practicePerson] || personConfig.wife;
+      return cfg[key] || fallback;
     }
-    function getPersonNoun() {
-      return (personConfig[practicePerson] && personConfig[practicePerson].noun) ? personConfig[practicePerson].noun : "wife";
-    }
-    function getPersonAvatar() {
-      return (personConfig[practicePerson] && personConfig[practicePerson].avatar) ? personConfig[practicePerson].avatar : "W";
-    }
+
+    function getPersonLabel() { return personField('label', "Wife ❤️"); }
+    function getPersonNoun() { return personField('noun', "wife"); }
+    function getPersonAvatar() { return personField('avatar', "W"); }
 
     function philVoicePrompt() {
       return `Write at an 8th grade reading level.
 Sound like Phil Merrell at Grounded Pursuit: calm, steady, warm, practical, and direct.
 Write like a real text message, not a therapy worksheet.
 Use 1-2 short sentences (about 18-34 words total).
-Lead with reflection + one ownership line when needed + one gentle reconnect question, or a respectful timeout with a clear return plan when flooded.
+Lead with reflection, and add one ownership line when the user actually did something. How the message ENDS is assigned per turn below - do not default to proposing a conversation.
 Sound like an actual man texting. Contractions are good. Sentence fragments are good. A one-word gut reaction is good when the moment is hot.
 Vary how you open every single time. Never lean on one stock phrase. "I hear you" is allowed once in a while, never as a default.
 Avoid robotic or clinical language like: "validate", "dynamics", "emotional regulation", "attachment", "nervous system", "underlying process".`;
@@ -776,19 +743,24 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
 
     let recentOpenerRegisters = [];
     let recentOpenerStems = [];
+    let recentOpenerTexts = [];
     let assignedOpenerRegister = 'reflect';
-
-    function resetOpenerVariety() {
-      recentOpenerRegisters = [];
-      recentOpenerStems = [];
-      assignedOpenerRegister = 'reflect';
-    }
 
     function hashSeed(str) {
       let h = 0;
       const s = String(str || '');
       for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
       return Math.abs(h);
+    }
+
+    // The model copies whichever example is listed first, so "Yeah, I dropped
+    // that." opened 4 of 24 sampled replies and "I'm here." closed 4 of 24.
+    // Rotating the list per turn removes the anchor without losing the register.
+    function rotateExamples(examples, seed) {
+      const list = (examples || []).slice();
+      if (list.length < 2) return list;
+      const offset = seed % list.length;
+      return list.slice(offset).concat(list.slice(0, offset));
     }
 
     function messageRunsHot(text) {
@@ -831,18 +803,146 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
     function buildOpenerInstruction(scenario) {
       const key = pickOpenerRegister(scenario);
       const reg = openerRegisters[key] || openerRegisters.reflect;
-      const banned = recentOpenerStems.slice(-3).filter(Boolean);
+      const seed = hashSeed('open-ex|' + String((scenario && scenario.id) || 'custom') + '|' + aiTurnRequestId);
+      const examples = rotateExamples(reg.examples, seed);
+      const banned = recentOpenerTexts.slice(-5).filter(Boolean);
       const banLine = banned.length
-        ? 'Do NOT open with any of these, they were just used: ' + banned.map(b => '"' + b + '"').join(', ') + '.'
+        ? 'These openings were just used - do NOT reuse any of them, even reworded: ' + banned.map(b => '"' + b + '"').join(' ') + '.'
         : 'Do not open the way a coaching script would.';
 
       return `OPENING STYLE FOR THIS TURN (required):
 Open The Grounded Response in this register: ${reg.label}.
-Examples of that register: ${reg.examples.join('  /  ')}
+Examples of that register: ${examples.join('  /  ')}
 Do not copy an example word for word if it does not fit the moment. Write what a real man would actually type.
 ${banLine}
 Only use "I hear you" when this turn's register is plain agreement, and even then look for a better fit first.
 If the register does not fit what actually happened (taking ownership when the user did nothing wrong, for example), use the closest register that stays honest.`;
+    }
+
+    // GROUNDED RESPONSE CLOSER VARIETY
+    // Same failure as the opener, one sentence later: the voice prompt asked
+    // for "one gentle reconnect question", so 11 of 24 sampled replies ended
+    // in some form of "can we talk about it tonight?". The ending is assigned
+    // per turn the same way the opening is.
+    const closerRegisters = {
+      none:      { label: "no closing move at all - land the acknowledgement and stop, the way a real text often just ends", examples: ["(end after the reflection or the ownership - no question, no plan, no scheduling)"] },
+      curious:   { label: "one real question about their experience, never about scheduling", examples: ["What part hit hardest?", "What did that feel like for you?", "Tell me what you needed from me.", "What's going on underneath it?"] },
+      need:      { label: "ask what they need from you right now", examples: ["What do you need from me right now?", "What would actually help?", "Tell me what would make this right."] },
+      act:       { label: "name one concrete thing you are doing about it, as a commitment with no question attached", examples: ["I'm handling it tonight.", "I'm putting the phone down.", "I'll have it to you by 2.", "That changes starting now."] },
+      presence:  { label: "show up in this moment instead of scheduling a later one", examples: ["Say it again, I'm actually listening this time.", "I'm not going anywhere.", "I'm all yours right now.", "I'm right here for this."] },
+      own:       { label: "end on the ownership itself, with no ask and no plan attached", examples: ["That's on me.", "I should have had your back.", "I got that one wrong."] },
+      space:     { label: "respect the space they asked for and give a clear return time", examples: ["I'll give you space and check back tonight.", "Take the time you need. I'll be here.", "I'll come find you in a bit."] },
+      reconnect: { label: "invite a real conversation", examples: ["Can we talk tonight?", "Can we sit down later?", "Got time to get into this after dinner?", "Want to hash this out tonight?"] }
+    };
+
+    let recentCloserRegisters = [];
+    let recentCloserStems = [];
+    // Full sentences as well as stems: '"what do you" was just used' is too
+    // vague an instruction, and the model ignored it four turns running.
+    let recentCloserTexts = [];
+    // A phrase coming back 6 or 11 turns later still reads as repetition, so the
+    // code-side check looks further back than the prompt-side ban list shows.
+    const CLOSER_LOOKBACK = 10;
+    let assignedCloserRegister = 'curious';
+
+    function pickCloserRegister(scenario) {
+      let pool;
+      if (practicePerson === 'coworker') pool = ['act', 'need', 'curious', 'none', 'own'];
+      else if (scenario && scenario.stance === 'withdraw') pool = ['space', 'none', 'own', 'presence'];
+      else pool = ['curious', 'act', 'presence', 'none', 'need', 'own', 'reconnect'];
+
+      const blocked = recentCloserRegisters.slice(-2);
+      const recentlyReconnected = recentCloserRegisters.slice(-5).indexOf('reconnect') !== -1;
+      const usable = pool.filter(k =>
+        blocked.indexOf(k) === -1 && !(k === 'reconnect' && recentlyReconnected));
+      const list = usable.length ? usable : pool.filter(k => k !== 'reconnect');
+      const seed = hashSeed('close|' + String((scenario && scenario.id) || 'custom') + '|' + practicePerson + '|' + aiTurnRequestId);
+      const key = list[seed % list.length];
+
+      recentCloserRegisters.push(key);
+      if (recentCloserRegisters.length > 6) recentCloserRegisters.shift();
+      assignedCloserRegister = key;
+      return key;
+    }
+
+    function buildCloserInstruction(scenario) {
+      const key = pickCloserRegister(scenario);
+      const reg = closerRegisters[key] || closerRegisters.curious;
+      const seed = hashSeed('close-ex|' + String((scenario && scenario.id) || 'custom') + '|' + aiTurnRequestId);
+      const examples = rotateExamples(reg.examples, seed);
+      const banned = recentCloserTexts.slice(-5).filter(Boolean);
+      const banLine = banned.length
+        ? 'These endings were just used - do NOT reuse any of them, even reworded: ' + banned.map(b => '"' + b + '"').join(' ') + '.'
+        : '';
+
+      return `ENDING FOR THIS TURN (required):
+End The Grounded Response this way: ${reg.label}.
+Shapes of that ending: ${examples.join('  /  ')}
+These are shapes, not text to copy. Write the version that fits what actually just happened.
+${key === 'reconnect' ? '' : 'Do NOT end by proposing a conversation. No "can we talk", no "let\'s talk tonight", no scheduling a time.'}
+${banLine}`.replace(/\n\n+/g, '\n');
+    }
+
+    // Splitting on sentence boundaries so the ending can be inspected and, if
+    // it repeats, swapped without touching the reflection that carries the reply.
+    function splitSentences(text) {
+      return String(text || '').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
+    }
+
+    const stockCloser = /^(can we (talk|chat|sit down|discuss)|let'?s (talk|chat|sit down)|i(?:'d| would) like to talk|when can we talk|maybe we can talk|talk (tonight|later|about it)|can we find (a )?time)\b/i;
+
+    function closerStem(text) {
+      const parts = splitSentences(text);
+      return openerStem(parts.length ? parts[parts.length - 1] : text);
+    }
+
+    // Substitutes only WITHIN the assigned register. Crossing registers turned
+    // "I get that you need space right now. I'll give you that." into
+    // "...I'm handling it tonight." - varied, and nonsense. A repeat is a
+    // smaller problem than a reply that contradicts what was just asked for.
+    function alternateCloserFor(register, body) {
+      const blocked = recentCloserStems.slice(-CLOSER_LOOKBACK);
+      const choice = ((closerRegisters[register] || {}).examples || []).find(ex => {
+        if (!/[.!?]$/.test(ex) || ex.charAt(0) === '(') return false;
+        if (stemClashes(openerStem(ex), blocked)) return false;
+        return !echoesBody(ex, body);
+      });
+      return choice ? choice.trim() : "";
+    }
+
+    function alternateReconnectFor(usedSentence) {
+      const usedStem = openerStem(usedSentence);
+      const blocked = recentCloserStems.slice(-CLOSER_LOOKBACK).concat([usedStem]);
+      return (closerRegisters.reconnect.examples || [])
+        .find(ex => !stemClashes(openerStem(ex), blocked)) || "";
+    }
+
+    // Only fires on a stock "can we talk" ending that was already used, and only
+    // when the reply still stands on its own once that sentence is replaced.
+    function enforceCloserVariety(text) {
+      let out = String(text || '').trim();
+      if (!out) return out;
+
+      const parts = splitSentences(out);
+      if (parts.length > 1) {
+        const last = parts[parts.length - 1];
+        if (stemClashes(openerStem(last), recentCloserStems.slice(-CLOSER_LOOKBACK))) {
+          const body = parts.slice(0, -1).join(' ');
+          const alt = assignedCloserRegister === 'reconnect'
+            ? alternateReconnectFor(last)
+            : alternateCloserFor(assignedCloserRegister, body);
+          // Dropping the ending is only safe for a stock scheduling line; every
+          // other register is carrying the point of the reply.
+          if (body.length > 20 && alt) out = body + ' ' + alt;
+          else if (body.length > 20 && stockCloser.test(last)) out = body;
+        }
+      }
+
+      recentCloserStems.push(closerStem(out));
+      if (recentCloserStems.length > CLOSER_LOOKBACK + 2) recentCloserStems.shift();
+      recentCloserTexts.push(splitSentences(out).pop() || out);
+      if (recentCloserTexts.length > 5) recentCloserTexts.shift();
+      return out;
     }
 
     function openerStem(text) {
@@ -904,7 +1004,7 @@ If the register does not fit what actually happened (taking ownership when the u
     // A lead-in like "I can imagine" would produce "I can imagine that makes sense."
     function alternateOpenerFor(register, body) {
       const order = ['own', 'agree', 'gut', 'work'];
-      const blocked = recentOpenerStems.slice(-3);
+      const blocked = recentOpenerStems.slice(-5);
       const bodyStem = openerStem(body);
       const startAt = Math.max(0, order.indexOf(register));
 
@@ -945,7 +1045,9 @@ If the register does not fit what actually happened (taking ownership when the u
       }
 
       recentOpenerStems.push(openerStem(out));
-      if (recentOpenerStems.length > 5) recentOpenerStems.shift();
+      if (recentOpenerStems.length > 8) recentOpenerStems.shift();
+      recentOpenerTexts.push(splitSentences(out)[0] || out);
+      if (recentOpenerTexts.length > 5) recentOpenerTexts.shift();
       return out;
     }
 
@@ -1003,14 +1105,14 @@ If the register does not fit what actually happened (taking ownership when the u
         out = `${out} ${tail}`.trim();
       }
 
-      return enforceOpenerVariety(out);
+      return enforceCloserVariety(enforceOpenerVariety(out));
     }
 
     function includesAnyPattern(text, patterns) {
       const t = String(text || "").toLowerCase();
       return patterns.some(pattern => {
         if (pattern instanceof RegExp) return pattern.test(t);
-        return t.includes(String(pattern).toLowerCase());
+        return matchesFlag(t, String(pattern).toLowerCase());
       });
     }
 
@@ -1025,22 +1127,16 @@ If the register does not fit what actually happened (taking ownership when the u
       const text = String(userText || "").toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim();
       if (!text) return null;
 
-      const hardRedPatterns = [
+      // Abandonment and stonewalling on top of the shared contempt list.
+      const hardRedPatterns = hardRedFlags.concat([
         "leave me alone",
         "stop bothering me",
-        "you are crazy",
-        "you're crazy",
-        "youre crazy",
         "whatever",
         /\bi'?m done\b/,
         /\bi am done\b/,
         /\bwe'?re done\b/,
-        /\bwe are done\b/,
-        /\bshut up\b/,
-        /\bfuck you\b/,
-        /\byou suck\b/,
-        /\bi hate you\b/
-      ];
+        /\bwe are done\b/
+      ]);
       if (includesAnyPattern(text, hardRedPatterns)) {
         return {
           grade: 'red',
@@ -1176,8 +1272,7 @@ If the register does not fit what actually happened (taking ownership when the u
       if (avatar) avatar.innerText = getPersonAvatar();
 
       const newHint = document.getElementById('new-sim-hint');
-      const cfg = personConfig[practicePerson] || {};
-      if (newHint) newHint.innerText = cfg.newSimHint || "Type or paste a custom message.";
+      if (newHint) newHint.innerText = CUSTOM_HINT;
 
       updateCustomModalCopy();
     }
@@ -1185,13 +1280,19 @@ If the register does not fit what actually happened (taking ownership when the u
     function updateCustomModalCopy() {
       const hint = document.getElementById('custom-modal-hint');
       const input = document.getElementById('custom-input');
-      const cfg = personConfig[practicePerson] || {};
-      if (hint) hint.innerText = cfg.customHint || "Type or paste a custom message.";
-      if (input) input.setAttribute('placeholder', cfg.customPlaceholder || "Ex: You never listen to me...");
+      if (hint) hint.innerText = CUSTOM_HINT;
+      if (input) input.setAttribute('placeholder', personField('customPlaceholder', "Ex: You never listen to me..."));
     }
 
     // --- DATA ---
-    const universalRedFlags = ["calm down", "crazy", "always", "never", "relax", "wrong", "drama", "lying", "childish", "grow up", "chill", "bitch", "fuck", "shit", "asshole", "damn", "stupid", "idiot", "jerk", "shut up", "you suck", "loser", "pathetic", "worst", "hate you", "narcissist", "toxic", "yes you do", "no i didn't", "no i don't", "i did", "not true"];
+    // Contempt and name-calling. One hit is enough to fail the reply.
+    const hardRedFlags = ["bitch", "bitches", "fuck", "fucking", "fucked", "shit", "shitty", "bullshit", "asshole", "cunt", "stupid", "idiot", "jerk", "shut up", "you suck", "loser", "pathetic", "hate you", "narcissist", "toxic", "you're crazy", "youre crazy", "you are crazy"];
+
+    // Defensive moves. These are scored against the green flags rather than
+    // failing outright, and they are written as phrases on purpose: bare
+    // "wrong", "never" and "i did" used to fail "I was wrong", "I never really
+    // listen" and "I didn't mean it" - five of six good replies came back red.
+    const universalRedFlags = ["calm down", "relax", "you always", "you never", "you're wrong", "youre wrong", "that's wrong", "thats wrong", "drama", "you're lying", "youre lying", "childish", "grow up", "chill out", "damn", "worst", "yes you do", "yes i did", "no i didn't", "no i don't", "not true"];
     const universalGreenFlags = ["hear you", "hear that", "hearing that", "hearing you", "feel like", "feels like", "must be", "must feel", "frustrating", "frustrated", "hard", "tough", "rough", "makes sense", "total sense", "totally sense", "make sense", "sorry", "apologize", "my bad", "understand", "understood", "get it", "got it", "getting it", "sounds like", "sound like", "sounds", "valid", "fair", "totally fair", "fair point", "hear ya", "stress", "stressful", "overwhelmed", "love you", "love ya", "i love you", "care about you", "care for you", "team", "together", "partner", "on the same page", "that sucks", "miss you", "miss us", "want that too", "want the same", "i can imagine", "can imagine", "whoa", "ouch", "oof", "that's rough", "thats rough", "that landed", "you're right", "youre right", "on me", "my fault", "no wonder"];
 
     // ==========================
@@ -1200,7 +1301,7 @@ If the register does not fit what actually happened (taking ownership when the u
     const scenarioPools = {
       wife: [
         {
-          id: 'attack', name: "The Attack", preview: "You never listen to me...", timestamp: "Now",
+          id: 'attack', name: "The Attack", timestamp: "Now",
           initialText: "You never listen to me. It’s like I’m talking to a wall. I asked you to do one thing!",
           redFlags: ["did do", "nagging", "busy", ...universalRedFlags],
           greenFlags: ["wall", "ignored", "ignoring", "listen", "heard", ...universalGreenFlags],
@@ -1210,9 +1311,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Okay… I just feel like I’m carrying this alone sometimes.", yellow: "I don’t know. I’m just frustrated.", red: "See? You’re doing it again." }
         },
         {
-          id: 'overwhelm', name: "Overwhelmed", preview: "The house is a wreck...", timestamp: "10m ago",
+          id: 'overwhelm', name: "Overwhelmed", timestamp: "10m ago",
           initialText: "The house is a wreck, the kids are screaming, and you’re just sitting there on your phone! Do I have to do everything?",
-          redFlags: ["just", "working", "minute", "why are you", "help", ...universalRedFlags],
+          redFlags: ["in a minute", "i'm working", "im working", "why are you", "one thing", ...universalRedFlags],
           greenFlags: ["wreck", "chaos", "alone", "phone", "kids", "everything", "drowning", ...universalGreenFlags],
           translation: "She feels overwhelmed and unsupported. She needs teamwork and relief.",
           perfectResponse: "I see how chaotic this feels. You shouldn’t feel alone in it. I’m putting the phone down and I’m in.",
@@ -1220,19 +1321,20 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. I’m just exhausted.", yellow: "Can you please do the kitchen?", red: "You care more about that screen than this family." }
         },
         {
-          id: 'money', name: "Money Stress", preview: "Did you seriously spend...", timestamp: "Tuesday",
+          id: 'money', name: "Money Stress", timestamp: "Tuesday",
           initialText: "Did you seriously spend $200 on that? We’re supposed to be saving for the trip!",
           redFlags: ["my money", "not a big deal", "controlling", "budget", ...universalRedFlags],
           greenFlags: ["worried", "trip", "savings", "save", "money", "scared", "spend", "spending", ...universalGreenFlags],
           translation: "She feels anxious about stability. She needs safety and a plan.",
           perfectResponse: "I get why that spiked your stress. The trip matters. Let’s look at it together and get back on the same page.",
-          tips: "Money fights usually aren’t about math—they’re about safety.",
+          tips: "Money fights usually aren’t about math. They’re about safety.",
           followUp: { green: "I just don’t want us to fall behind.", yellow: "We need to stick to the plan.", red: "You’re so careless." }
         },
         {
-          id: 'shutdown', name: "The Shutdown", preview: "I'm fine. Just leave me...", timestamp: "Yesterday",
+          id: 'shutdown', name: "The Shutdown", timestamp: "Yesterday",
+          stance: 'withdraw',
           initialText: "I’m fine. Just leave me alone.",
-          redFlags: ["tell me", "what's wrong", "lying", "not fine", "talk", ...universalRedFlags],
+          redFlags: ["tell me", "what's wrong", "you're lying", "youre lying", "not fine", "just talk to me", "we need to talk", ...universalRedFlags],
           greenFlags: ["space", "here when", "ready", "check in", "okay", "alright", "fine", "alone", ...universalGreenFlags],
           translation: "She feels flooded. She needs space and calm, without feeling abandoned.",
           perfectResponse: "Okay. I’ll give you space. I’m here when you’re ready, and I’ll check back later.",
@@ -1240,9 +1342,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thanks. I just need a minute to calm down.", yellow: "Okay.", red: "Why can’t you just listen? Leave me alone." }
         },
         {
-          id: 'parenting', name: "Parenting Clash", preview: "You need to be harder on...", timestamp: "Friday",
+          id: 'parenting', name: "Parenting Clash", timestamp: "Friday",
           initialText: "You need to be harder on him! You let him get away with everything. It undermines me.",
-          redFlags: ["he's a kid", "mean", "strict", "lighten up", ...universalRedFlags],
+          redFlags: ["he's a kid", "you're being mean", "too strict", "lighten up", ...universalRedFlags],
           greenFlags: ["undermined", "alone", "bad guy", "team", "strict", "harder", "kids", ...universalGreenFlags],
           translation: "She feels alone in parenting. She needs you to be on her team.",
           perfectResponse: "Sounds like you're out there alone on this and I keep undercutting you. That's not what I want. I want us running the same play.",
@@ -1250,7 +1352,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Yes. I hate being the only bad guy.", yellow: "Just back me up next time.", red: "You just want to be the fun dad." }
         },
         {
-          id: 'roommate', name: "Roommate Rut", preview: "I feel like we're just...", timestamp: "2h ago",
+          id: 'roommate', name: "Roommate Rut", timestamp: "2h ago",
           initialText: "I feel like we’re just roommates. You never touch me or look at me anymore.",
           redFlags: ["tired", "busy", "pressure", "sex", ...universalRedFlags],
           greenFlags: ["roommates", "lonely", "disconnect", "distant", "touch", "intimacy", "miss you", ...universalGreenFlags],
@@ -1260,7 +1362,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "I just miss you… I miss us.", yellow: "I don’t know what to do anymore.", red: "It feels like you don’t care." }
         },
         {
-          id: 'inlaws', name: "In-Law Loyalty", preview: "I can't believe you let...", timestamp: "Sunday",
+          id: 'inlaws', name: "In-Law Loyalty", timestamp: "Sunday",
           initialText: "I can’t believe you let your mom talk to me like that. You never take my side!",
           redFlags: ["she didn't", "sensitive", "my mom", "drama", ...universalRedFlags],
           greenFlags: ["side", "alone", "defend", "hurt", "team", "support", "mom", ...universalGreenFlags],
@@ -1270,7 +1372,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "I just need to know we’re a team.", yellow: "It happens a lot.", red: "You always choose her over me." }
         },
         {
-          id: 'work', name: "Late Again", preview: "Dinner is cold...", timestamp: "8:30 PM",
+          id: 'work', name: "Late Again", timestamp: "8:30 PM",
           initialText: "Dinner is cold. Again. I guess work is more important than us.",
           redFlags: ["working", "provider", "ungrateful", "boss", ...universalRedFlags],
           greenFlags: ["waiting", "disappointed", "priority", "important", "alone", "sad", "dinner", ...universalGreenFlags],
@@ -1280,9 +1382,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "I just miss dinner with you.", yellow: "Just microwave it.", red: "Go marry your job then." }
         },
         {
-          id: 'tone', name: "Tone Police", preview: "Don't speak to me in...", timestamp: "Now",
+          id: 'tone', name: "Tone Police", timestamp: "Now",
           initialText: "Don’t speak to me in that tone! You sound exactly like your father.",
-          redFlags: ["what tone", "didn't", "sensitive", "you started", ...universalRedFlags],
+          redFlags: ["what tone", "i didn't say that", "sensitive", "you started", ...universalRedFlags],
           greenFlags: ["tone", "harsh", "scary", "hurt", "sounded", ...universalGreenFlags],
           translation: "She feels scared or talked down to. She needs emotional safety.",
           perfectResponse: "You’re right. My tone was sharp. I’m sorry—let me slow down and try that again.",
@@ -1290,7 +1392,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. That helps.", yellow: "Just watch it next time.", red: "You’re turning into him." }
         },
         {
-          id: 'public', name: "Embarrassed", preview: "You made me look...", timestamp: "Last Night",
+          id: 'public', name: "Embarrassed", timestamp: "Last Night",
           initialText: "You made me look stupid in front of our friends. Why did you have to correct me?",
           redFlags: ["you were wrong", "facts", "joke", "sensitive", ...universalRedFlags],
           greenFlags: ["stupid", "embarrassed", "small", "friends", "public", "humiliated", ...universalGreenFlags],
@@ -1300,9 +1402,10 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "I just want to feel safe with you.", yellow: "It was embarrassing.", red: "I’m not going out with you again." }
         },
         {
-          id: 'silent', name: "The Silent Treatment", preview: "...", timestamp: "1h ago",
+          id: 'silent', name: "The Silent Treatment", timestamp: "1h ago",
+          stance: 'withdraw',
           initialText: "...",
-          redFlags: ["hello", "answer me", "childish", "grow up", "talk", ...universalRedFlags],
+          redFlags: ["hello", "answer me", "childish", "grow up", "just talk to me", "say something", ...universalRedFlags],
           greenFlags: ["space", "here", "ready", "love you", "checking in", ...universalGreenFlags],
           translation: "She’s too hurt to talk. She needs space, but she’s watching if you stay steady.",
           perfectResponse: "I notice you’re quiet. I’ll give you space, and I’m here when you’re ready. I’ll check back later.",
@@ -1310,9 +1413,10 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "I just need time.", yellow: "...", red: "Leave me alone." }
         },
         {
-          id: 'intimacy', name: "Not Tonight", preview: "Can you stop touching...", timestamp: "10:30 PM",
+          id: 'intimacy', name: "Not Tonight", timestamp: "10:30 PM",
+          stance: 'withdraw',
           initialText: "Can you stop touching me? I’m not in the mood and you’re being pushy.",
-          redFlags: ["barely touched", "fine", "whatever", "never", "rejected", ...universalRedFlags],
+          redFlags: ["barely touched", "you're never in the mood", "youre never in the mood", "rejected", ...universalRedFlags],
           greenFlags: ["pressure", "space", "sorry", "respect", "tired", ...universalGreenFlags],
           translation: "She feels pressured. She needs her boundary respected and to feel valued.",
           perfectResponse: "Got it. I’m sorry I pushed. I’ll stop. I care about you—not just sex.",
@@ -1323,7 +1427,7 @@ If the register does not fit what actually happened (taking ownership when the u
 
       girlfriend: [
         {
-          id: 'gf_textback', name: "Text Back", preview: "Are you ignoring me?", timestamp: "Now",
+          id: 'gf_textback', name: "Text Back", timestamp: "Now",
           initialText: "Are you ignoring me? You’ve been on your phone but you didn’t respond to my text.",
           redFlags: ["i was busy", "relax", "crazy", "overreacting", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "sorry", "i get it", "didn't mean", "forgot", ...universalGreenFlags],
@@ -1333,9 +1437,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Okay… thank you. I just hate feeling stupid for caring.", yellow: "Just… please respond next time.", red: "Wow. So I’m not important. Got it." }
         },
         {
-          id: 'gf_plans', name: "Plans Changed", preview: "So we’re not going out?", timestamp: "2h ago",
+          id: 'gf_plans', name: "Plans Changed", timestamp: "2h ago",
           initialText: "So we’re not going out tonight? You always change plans last minute.",
-          redFlags: ["always", "never", "not my fault", "work", "whatever", ...universalRedFlags],
+          redFlags: ["you always", "you never", "not my fault", "had to work", "work came up", ...universalRedFlags],
           greenFlags: ["disappointed", "i get it", "that sucks", "sorry", "makes sense", ...universalGreenFlags],
           translation: "She feels disappointed and unchosen. She needs consistency and care.",
           perfectResponse: "I get why that feels disappointing. I’m sorry for the last-minute change. I want to make it right—can we pick a solid plan together?",
@@ -1343,7 +1447,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Okay. I just want to feel like I matter.", yellow: "Fine. Just pick something.", red: "You always do this. I’m done trying." }
         },
         {
-          id: 'gf_ex', name: "Social Media Trigger", preview: "Why did you like her post?", timestamp: "Yesterday",
+          id: 'gf_ex', name: "Social Media Trigger", timestamp: "Yesterday",
           initialText: "Why did you like her post? That’s your ex. It feels weird.",
           redFlags: ["you're insecure", "jealous", "calm down", "not a big deal", ...universalRedFlags],
           greenFlags: ["i hear you", "i get it", "that makes sense", "sorry", "reassure", ...universalGreenFlags],
@@ -1353,9 +1457,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. I just need to know I’m not competing.", yellow: "Okay. Please just be mindful.", red: "You’re acting single. It’s embarrassing." }
         },
         {
-          id: 'gf_commit', name: "Where Is This Going?", preview: "I don’t know where we stand...", timestamp: "Friday",
+          id: 'gf_commit', name: "Where Is This Going?", timestamp: "Friday",
           initialText: "I don’t know where we stand. I feel like I care more than you do.",
-          redFlags: ["pressure", "too much", "crazy", "relax", "always", "never", ...universalRedFlags],
+          redFlags: ["pressure", "too much", "crazy", "relax", "you always", "you never", ...universalRedFlags],
           greenFlags: ["i hear you", "that hurts", "i care", "i want", "reconnect", ...universalGreenFlags],
           translation: "She feels uncertain and wants reassurance and direction.",
           perfectResponse: "That has to feel awful to sit with. I do care about you, and you deserve a straight answer. Can we talk tonight?",
@@ -1363,7 +1467,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Yes. That’s all I’ve been asking for.", yellow: "Okay. We need to talk.", red: "If you cared, I wouldn’t have to beg." }
         },
         {
-          id: 'gf_affection', name: "Affection Drop", preview: "You never touch me...", timestamp: "Now",
+          id: 'gf_affection', name: "Affection Drop", timestamp: "Now",
           initialText: "You never hold my hand anymore. I feel like you’re not into me.",
           redFlags: ["tired", "busy", "sex", "pressure", "whatever", ...universalRedFlags],
           greenFlags: ["miss you", "i hear you", "that hurts", "reconnect", "sorry", ...universalGreenFlags],
@@ -1373,7 +1477,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Okay… that helps. I just miss us.", yellow: "I just want effort.", red: "It doesn’t feel like it." }
         },
         {
-          id: 'gf_tone', name: "Tone", preview: "You sounded harsh...", timestamp: "Last Night",
+          id: 'gf_tone', name: "Tone", timestamp: "Last Night",
           initialText: "You sounded so harsh when you talked to me. It made me shut down.",
           redFlags: ["what tone", "sensitive", "you started", ...universalRedFlags],
           greenFlags: ["sorry", "you're right", "i hear you", "try again", ...universalGreenFlags],
@@ -1383,7 +1487,8 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. That means a lot.", yellow: "Okay… just watch it.", red: "You always do this." }
         },
         {
-          id: 'gf_space', name: "Needing Space", preview: "I need a minute...", timestamp: "2h ago",
+          id: 'gf_space', name: "Needing Space", timestamp: "2h ago",
+          stance: 'withdraw',
           initialText: "I need a minute. Please stop pushing me right now.",
           redFlags: ["talk now", "what's wrong", "not fine", "lying", ...universalRedFlags],
           greenFlags: ["okay", "space", "here when", "ready", ...universalGreenFlags],
@@ -1393,7 +1498,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thanks. I’ll come back when I’m calm.", yellow: "Okay.", red: "You never listen." }
         },
         {
-          id: 'gf_intro', name: "Not Introduced", preview: "You didn’t introduce me...", timestamp: "Sunday",
+          id: 'gf_intro', name: "Not Introduced", timestamp: "Sunday",
           initialText: "You didn’t even introduce me at that party. I felt invisible.",
           redFlags: ["not a big deal", "relax", "sensitive", ...universalRedFlags],
           greenFlags: ["invisible", "sorry", "i hear you", "that sucks", ...universalGreenFlags],
@@ -1406,9 +1511,9 @@ If the register does not fit what actually happened (taking ownership when the u
 
       family: [
         {
-          id: 'fam_nevercall', name: "You Never Call", preview: "Do you even care?", timestamp: "Now",
+          id: 'fam_nevercall', name: "You Never Call", timestamp: "Now",
           initialText: "Do you even care about this family? You never call. You’re always too busy for us.",
-          redFlags: ["always", "never", "dramatic", "i'm busy", "stop", ...universalRedFlags],
+          redFlags: ["you always", "you never", "dramatic", "i'm busy", "stop", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "sorry", "miss you", "care", ...universalGreenFlags],
           translation: "They feel disconnected and want closeness and consistency.",
           perfectResponse: "It sounds like you've been feeling forgotten, and that's on me for going quiet. I do care. Can we lock in a time this week?",
@@ -1416,7 +1521,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Okay. I just miss you.", yellow: "Fine. Just actually follow through.", red: "You always say that." }
         },
         {
-          id: 'fam_holiday', name: "Holiday Pressure", preview: "Are you coming or not?", timestamp: "Yesterday",
+          id: 'fam_holiday', name: "Holiday Pressure", timestamp: "Yesterday",
           initialText: "Are you coming for the holiday or not? Mom is upset and it’s making everything stressful.",
           redFlags: ["not my problem", "calm down", "drama", "whatever", ...universalRedFlags],
           greenFlags: ["stressful", "i get it", "makes sense", "sorry", "plan", ...universalGreenFlags],
@@ -1426,9 +1531,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. That helps.", yellow: "Okay. Please don’t drag it out.", red: "You’re making this worse." }
         },
         {
-          id: 'fam_critic', name: "Criticism", preview: "You think you’re better than us...", timestamp: "Friday",
+          id: 'fam_critic', name: "Criticism", timestamp: "Friday",
           initialText: "You think you’re better than us now. You show up and act like you’ve got it all figured out.",
-          redFlags: ["you're wrong", "that's not true", "crazy", "always", ...universalRedFlags],
+          redFlags: ["you're wrong", "that's not true", "crazy", "you always", ...universalRedFlags],
           greenFlags: ["sounds like", "hurt", "i hear you", "didn't mean", "sorry", ...universalGreenFlags],
           translation: "They feel insecure and judged. They want respect and connection.",
           perfectResponse: "I hear you. If I've been coming across like I'm above you, that's not what I want. You're still my family.",
@@ -1436,9 +1541,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Yeah… I just want us to be good.", yellow: "Okay. Just… don’t act like that.", red: "There it is. You’re doing it again." }
         },
         {
-          id: 'fam_money', name: "Money Ask", preview: "Can you help me out?", timestamp: "2h ago",
+          id: 'fam_money', name: "Money Ask", timestamp: "2h ago",
           initialText: "Can you help me out with some money? I’m stressed and I don’t know what else to do.",
-          redFlags: ["not my problem", "you always", "never", "stupid", ...universalRedFlags],
+          redFlags: ["not my problem", "you always", "you never", "stupid", ...universalRedFlags],
           greenFlags: ["stressed", "hard", "i hear you", "let's figure out", "plan", ...universalGreenFlags],
           translation: "They feel overwhelmed and embarrassed. They need support and a plan.",
           perfectResponse: "That sounds like a lot to be carrying. Tell me what's going on and I'll be straight with you about what I can do.",
@@ -1446,9 +1551,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. I just needed someone steady.", yellow: "Okay. I just need help.", red: "Wow. Forget it." }
         },
         {
-          id: 'fam_parenting', name: "Parenting Advice", preview: "You’re spoiling the kids...", timestamp: "Sunday",
+          id: 'fam_parenting', name: "Parenting Advice", timestamp: "Sunday",
           initialText: "You’re spoiling the kids. In my day, we didn’t do all this gentle stuff.",
-          redFlags: ["shut up", "stupid", "you don't know", "always", ...universalRedFlags],
+          redFlags: ["shut up", "stupid", "you don't know", "you always", ...universalRedFlags],
           greenFlags: ["i hear you", "i get it", "makes sense", "respect", "talk", ...universalGreenFlags],
           translation: "They feel threatened by change and want to feel respected.",
           perfectResponse: "I know you care about these kids. That's where this is coming from. What worries you most? I want to actually hear it.",
@@ -1456,9 +1561,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "I just don’t want them to be soft.", yellow: "Just think about what I said.", red: "You never listen to elders." }
         },
         {
-          id: 'fam_groupchat', name: "Family Group Chat", preview: "Don’t start drama...", timestamp: "Now",
+          id: 'fam_groupchat', name: "Family Group Chat", timestamp: "Now",
           initialText: "Can you not start drama in the group chat? It’s exhausting.",
-          redFlags: ["whatever", "you started", "crazy", "always", ...universalRedFlags],
+          redFlags: ["whatever", "you started", "crazy", "you always", ...universalRedFlags],
           greenFlags: ["exhausting", "i hear you", "sorry", "my bad", "calm", ...universalGreenFlags],
           translation: "They feel overwhelmed and want peace and respect.",
           perfectResponse: "Fair. I was adding to it and it's already exhausting for everybody. I'll drop it and handle it one-on-one instead.",
@@ -1466,19 +1571,19 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. That’s all I wanted.", yellow: "Okay. Please do.", red: "Sure. We’ll see." }
         },
         {
-          id: 'fam_boundary', name: "Boundary Push", preview: "Why won’t you tell me?", timestamp: "Last Night",
+          id: 'fam_boundary', name: "Boundary Push", timestamp: "Last Night",
           initialText: "Why won’t you tell me what’s going on? You’re shutting me out.",
-          redFlags: ["none of your business", "leave me alone", "stop", ...universalRedFlags],
+          redFlags: ["none of your business", "leave me alone", "stop asking", "drop it", ...universalRedFlags],
           greenFlags: ["i hear you", "care", "i'm not ready", "space", ...universalGreenFlags],
-          translation: "They feel worried and want closeness, but you need boundaries.",
+          translation: "They feel worried and shut out. They want reassurance that you are okay.",
           perfectResponse: "I get why it looks like I'm shutting you out. I'm not. I'm just not ready to talk about it yet, and I'll come to you when I am.",
           tips: "Warm boundary = connection + limit.",
           followUp: { green: "Okay. I can respect that.", yellow: "Fine. Just… don’t disappear.", red: "So you don’t trust me." }
         },
         {
-          id: 'fam_sibling', name: "Sibling Comparison", preview: "Must be nice...", timestamp: "Tuesday",
+          id: 'fam_sibling', name: "Sibling Comparison", timestamp: "Tuesday",
           initialText: "Must be nice to have everything figured out. Some of us don’t get it that easy.",
-          redFlags: ["not true", "you're jealous", "always", "never", ...universalRedFlags],
+          redFlags: ["not true", "you're jealous", "you always", "you never", ...universalRedFlags],
           greenFlags: ["sounds like", "hard", "i hear you", "stress", ...universalGreenFlags],
           translation: "They feel behind and ashamed. They want empathy, not correction.",
           perfectResponse: "Sounds like you're carrying a lot right now, and I don't want you doing it alone. What's actually going on?",
@@ -1489,7 +1594,7 @@ If the register does not fit what actually happened (taking ownership when the u
 
       coworker: [
         {
-          id: 'co_deadline', name: "Late Deliverable", preview: "Where is that file?", timestamp: "Now",
+          id: 'co_deadline', name: "Late Deliverable", timestamp: "Now",
           initialText: "Hey—where is that file? I needed it this morning and I haven’t heard back.",
           redFlags: ["relax", "calm down", "not my job", "whatever", "stop", ...universalRedFlags],
           greenFlags: ["i hear you", "sorry", "my bad", "on it", "thanks", "understand", "makes sense", ...universalGreenFlags],
@@ -1499,7 +1604,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thanks. 2 PM works.", yellow: "Please send whatever you have ASAP.", red: "This is becoming a pattern." }
         },
         {
-          id: 'co_tone', name: "Tone in Email", preview: "That came off rude...", timestamp: "Yesterday",
+          id: 'co_tone', name: "Tone in Email", timestamp: "Yesterday",
           initialText: "Your email came off pretty rude. I’m not trying to fight, but it didn’t feel great to read.",
           redFlags: ["what tone", "you're sensitive", "not true", ...universalRedFlags],
           greenFlags: ["you're right", "sorry", "my bad", "i hear you", "try again", ...universalGreenFlags],
@@ -1509,9 +1614,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "I appreciate that.", yellow: "Okay. Just be mindful.", red: "It’s not the first time." }
         },
         {
-          id: 'co_credit', name: "Credit Taken", preview: "Why did you present that?", timestamp: "Friday",
+          id: 'co_credit', name: "Credit Taken", timestamp: "Friday",
           initialText: "Why did you present that as if it was your work? I put a lot into that.",
-          redFlags: ["calm down", "not a big deal", "you're wrong", "always", ...universalRedFlags],
+          redFlags: ["calm down", "not a big deal", "you're wrong", "you always", ...universalRedFlags],
           greenFlags: ["i hear you", "sorry", "credit", "my bad", "respect", ...universalGreenFlags],
           translation: "They feel disrespected. They need acknowledgment and repair.",
           perfectResponse: "You're right, and I'd be upset too. That was your work and I should have said so. How do you want me to fix it?",
@@ -1519,7 +1624,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. Please clarify it with the team.", yellow: "Just… don’t do it again.", red: "This makes me not trust you." }
         },
         {
-          id: 'co_slack', name: "No Response", preview: "Can you respond please?", timestamp: "2h ago",
+          id: 'co_slack', name: "No Response", timestamp: "2h ago",
           initialText: "Can you respond please? I’ve pinged you twice and I’m blocked.",
           redFlags: ["stop", "annoying", "relax", "whatever", ...universalRedFlags],
           greenFlags: ["sorry", "i hear you", "blocked", "on it", "thanks", ...universalGreenFlags],
@@ -1529,17 +1634,17 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thanks. Appreciate it.", yellow: "Okay. Please just update me.", red: "This is really frustrating." }
         },
         {
-          id: 'co_quality', name: "Not Good Enough", preview: "This isn’t ready...", timestamp: "Last Night",
+          id: 'co_quality', name: "Not Good Enough", timestamp: "Last Night",
           initialText: "This isn’t ready. I can’t send this to leadership like this.",
           redFlags: ["whatever", "you're picky", "not my fault", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "fix", "revise", "sorry", ...universalGreenFlags],
           translation: "They’re worried about outcomes and want quality and confidence.",
-          perfectResponse: "Got it. I hear you. What are the top 2 changes you need so it’s sendable? I’ll prioritize those first.",
+          perfectResponse: "Got it. What are the top two changes you need before this can go out? I’ll start there.",
           tips: "Ask for clarity instead of getting defensive.",
           followUp: { green: "Yes. Thank you. Here are the two fixes.", yellow: "We need multiple fixes. Let’s talk.", red: "This is basic stuff." }
         },
         {
-          id: 'co_meeting', name: "Missed Meeting", preview: "You weren’t there...", timestamp: "Tuesday",
+          id: 'co_meeting', name: "Missed Meeting", timestamp: "Tuesday",
           initialText: "You weren’t at the meeting and we needed your input. It put us behind.",
           redFlags: ["not my fault", "i was busy", "whatever", ...universalRedFlags],
           greenFlags: ["sorry", "my bad", "i hear you", "behind", "fix", ...universalGreenFlags],
@@ -1549,9 +1654,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thanks. Here’s what we need.", yellow: "We’ll need to redo a piece.", red: "This keeps happening." }
         },
         {
-          id: 'co_boundary', name: "Task Dump", preview: "I can’t do your part too...", timestamp: "Now",
+          id: 'co_boundary', name: "Task Dump", timestamp: "Now",
           initialText: "I can’t keep doing your part too. It’s too much.",
-          redFlags: ["always", "never", "relax", "not my problem", ...universalRedFlags],
+          redFlags: ["you always", "you never", "relax", "not my problem", ...universalRedFlags],
           greenFlags: ["i hear you", "too much", "sorry", "plan", "fair", ...universalGreenFlags],
           translation: "They feel overwhelmed and resentful. They need fairness and boundaries.",
           perfectResponse: "Fair point. That's not sustainable and it shouldn't be landing on you. Let's split out what's mine so you're not covering it.",
@@ -1559,7 +1664,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. That’s exactly it.", yellow: "Okay. We need to clarify it.", red: "You always do this." }
         },
         {
-          id: 'co_feedback', name: "Direct Feedback", preview: "We need to talk...", timestamp: "Friday",
+          id: 'co_feedback', name: "Direct Feedback", timestamp: "Friday",
           initialText: "We need to talk. The way you handled that today wasn’t okay.",
           redFlags: ["what did i do", "you're wrong", "calm down", ...universalRedFlags],
           greenFlags: ["i hear you", "sorry", "understand", "talk", "fix", ...universalGreenFlags],
@@ -1574,7 +1679,7 @@ If the register does not fit what actually happened (taking ownership when the u
     const dailyScenarioPools = {
       wife: [
         {
-          id: 'dc_wife_vacation', name: "Vacation Clash", preview: "You never want to plan anything...", timestamp: "Now",
+          id: 'dc_wife_vacation', name: "Vacation Clash", timestamp: "Now",
           initialText: "You never want to plan anything. I've been asking about the vacation for weeks and you just keep putting it off.",
           redFlags: ["been busy", "relax", "stop nagging", ...universalRedFlags],
           greenFlags: ["i hear you", "waiting", "makes sense", "frustrated", "plan", "together", ...universalGreenFlags],
@@ -1584,17 +1689,17 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. That's all I've been wanting.", yellow: "Okay. Tonight. For real.", red: "I'll believe it when I see it." }
         },
         {
-          id: 'dc_wife_forgotten', name: "Forgot Again", preview: "You forgot. Again.", timestamp: "3h ago",
+          id: 'dc_wife_forgotten', name: "Forgot Again", timestamp: "3h ago",
           initialText: "You forgot. Again. I asked you to do one thing and you couldn't even do that.",
-          redFlags: ["it slipped", "relax", "not a big deal", "always", ...universalRedFlags],
+          redFlags: ["it slipped", "relax", "not a big deal", "you always", ...universalRedFlags],
           greenFlags: ["i dropped the ball", "that's on me", "sorry", "makes sense", "let you down", ...universalGreenFlags],
           translation: "She feels like she doesn't matter enough to remember. She needs to feel like a priority.",
           perfectResponse: "Yeah, I dropped that. I get why it's frustrating when you only asked for one thing. I'm handling it now.",
           tips: "Skip the excuse. Own it clean and offer to fix it immediately.",
-          followUp: { green: "Just please follow through.", yellow: "Fine. It's whatever.", red: "I'm tired of asking." }
+          followUp: { green: "Thank you. That's all I needed to hear.", yellow: "Fine. It's whatever.", red: "I'm tired of asking." }
         },
         {
-          id: 'dc_wife_unappreciated', name: "Not Appreciated", preview: "I feel invisible...", timestamp: "Yesterday",
+          id: 'dc_wife_unappreciated', name: "Not Appreciated", timestamp: "Yesterday",
           initialText: "I feel invisible. I do so much for this family and no one even notices.",
           redFlags: ["you're not invisible", "you're overreacting", "i notice", ...universalRedFlags],
           greenFlags: ["invisible", "exhausted", "unseen", "i hear you", "thank you", "appreciate", ...universalGreenFlags],
@@ -1604,7 +1709,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "That actually means a lot.", yellow: "I just needed to hear that.", red: "It doesn't feel like it most of the time." }
         },
         {
-          id: 'dc_wife_screen', name: "Screen Time", preview: "You're always on your phone...", timestamp: "Now",
+          id: 'dc_wife_screen', name: "Screen Time", timestamp: "Now",
           initialText: "You're always on your phone. Even at dinner. Even when I'm talking to you.",
           redFlags: ["i'm just", "relax", "it's work", "you too", ...universalRedFlags],
           greenFlags: ["you're right", "disconnected", "i hear you", "here now", "phone down", ...universalGreenFlags],
@@ -1614,9 +1719,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. That's all I want.", yellow: "Okay. Let's try.", red: "You'll just pick it back up." }
         },
         {
-          id: 'dc_wife_apology', name: "Apology Not Enough", preview: "Sorry doesn't fix it...", timestamp: "This Morning",
+          id: 'dc_wife_apology', name: "Apology Not Enough", timestamp: "This Morning",
           initialText: "You keep saying sorry but nothing changes. Sorry doesn't mean anything anymore.",
-          redFlags: ["i said sorry", "what do you want", "always", "never", ...universalRedFlags],
+          redFlags: ["i said sorry", "what do you want", "you always", "you never", ...universalRedFlags],
           greenFlags: ["i hear you", "you're right", "pattern", "different this time", "change", ...universalGreenFlags],
           translation: "She's lost trust in your words. She needs to see proof through action, not just apologies.",
           perfectResponse: "That's fair. Sorry without change is just noise at this point. Tell me the one thing that would actually be different.",
@@ -1624,7 +1729,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "I need you to actually do what you say.", yellow: "I don't know anymore.", red: "Nothing, apparently." }
         },
         {
-          id: 'dc_wife_health', name: "Health Scare", preview: "You didn't even check on me...", timestamp: "Tuesday",
+          id: 'dc_wife_health', name: "Health Scare", timestamp: "Tuesday",
           initialText: "I was sick all day and you didn't even check on me once. I felt so alone.",
           redFlags: ["i was busy", "you seemed fine", "you didn't ask", ...universalRedFlags],
           greenFlags: ["alone", "sorry", "i should have", "my bad", "i hear you", ...universalGreenFlags],
@@ -1634,7 +1739,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Better. I just needed to know you care.", yellow: "I'll be okay.", red: "I can't count on you." }
         },
         {
-          id: 'dc_wife_future', name: "Future Drift", preview: "I don't know what we're building...", timestamp: "Friday",
+          id: 'dc_wife_future', name: "Future Drift", timestamp: "Friday",
           initialText: "I don't know what we're building together. It feels like we're just coexisting.",
           redFlags: ["here we go", "overreacting", "everything is fine", ...universalRedFlags],
           greenFlags: ["i hear you", "disconnected", "that hurts", "want us", "reconnect", "together", ...universalGreenFlags],
@@ -1647,9 +1752,9 @@ If the register does not fit what actually happened (taking ownership when the u
 
       girlfriend: [
         {
-          id: 'dc_gf_friends', name: "Friend Priority", preview: "You always pick them over me...", timestamp: "Now",
+          id: 'dc_gf_friends', name: "Friend Priority", timestamp: "Now",
           initialText: "You always seem to have time for your friends but not for me.",
-          redFlags: ["that's not true", "relax", "you're jealous", "always", ...universalRedFlags],
+          redFlags: ["that's not true", "relax", "you're jealous", "you always", ...universalRedFlags],
           greenFlags: ["i hear you", "that stings", "sorry", "makes sense", "time", "priority", ...universalGreenFlags],
           translation: "She feels like she's not a priority. She wants to feel chosen.",
           perfectResponse: "I can see why that stings. You should feel chosen, not squeezed in. Let's put something real on the calendar this week.",
@@ -1657,7 +1762,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Okay. I just want to feel like I matter.", yellow: "Fine. Let's actually do it.", red: "You say that and then cancel." }
         },
         {
-          id: 'dc_gf_movingin', name: "Moving In Talk", preview: "Are we ever going to move forward?", timestamp: "Yesterday",
+          id: 'dc_gf_movingin', name: "Moving In Talk", timestamp: "Yesterday",
           initialText: "Are we ever going to move forward? We've been together long enough. I don't want to wait forever.",
           redFlags: ["pressure", "too fast", "chill", "not ready", ...universalRedFlags],
           greenFlags: ["i hear you", "that makes sense", "want that too", "talk", "plan", ...universalGreenFlags],
@@ -1667,7 +1772,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Yes. That's all I've been asking for.", yellow: "Okay. Tonight.", red: "I can't keep waiting on you." }
         },
         {
-          id: 'dc_gf_nightout', name: "Late Night Out", preview: "You said you'd be back by 11...", timestamp: "1 AM",
+          id: 'dc_gf_nightout', name: "Late Night Out", timestamp: "1 AM",
           initialText: "You said you'd be back by 11. It's 1 AM. I was worried and you weren't answering.",
           redFlags: ["relax", "overreacting", "you're not my mom", "i'm fine", ...universalRedFlags],
           greenFlags: ["worried", "i should have", "sorry", "my bad", "let you know", ...universalGreenFlags],
@@ -1677,7 +1782,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. Just keep me in the loop.", yellow: "Please don't do that again.", red: "I don't know if I can trust you." }
         },
         {
-          id: 'dc_gf_iloveyou', name: "I Love You", preview: "You never say it back first...", timestamp: "Last Night",
+          id: 'dc_gf_iloveyou', name: "I Love You", timestamp: "Last Night",
           initialText: "You never say it first. I'm always the one who says I love you first. Does it even mean anything to you?",
           redFlags: ["of course", "you're too sensitive", "i show it", "whatever", ...universalRedFlags],
           greenFlags: ["you're right", "i hear you", "that matters", "i love you", "i'll do better", ...universalGreenFlags],
@@ -1687,11 +1792,11 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. That means a lot.", yellow: "Okay. I love you too.", red: "I'll believe it when I see it." }
         },
         {
-          id: 'dc_gf_comparing', name: "Comparison", preview: "My ex used to...", timestamp: "Sunday",
+          id: 'dc_gf_comparing', name: "Comparison", timestamp: "Sunday",
           initialText: "My ex used to plan things. I'm not comparing, I just wish you'd put in more effort.",
           redFlags: ["your ex", "then go back", "never good enough", ...universalRedFlags],
           greenFlags: ["i hear you", "that's fair", "effort", "want to", "show up", ...universalGreenFlags],
-          translation: "She's not actually missing her ex — she wants more effort and initiative from you.",
+          translation: "She's not actually missing her ex—she wants more effort and initiative from you.",
           perfectResponse: "Okay, that stung a little, but you're not wrong. You want effort and initiative. What would mean the most to you?",
           tips: "Don't react to the ex mention. Focus on what she's actually asking for.",
           followUp: { green: "That's all I want. To feel like you're trying.", yellow: "Just surprise me sometimes.", red: "I shouldn't have to ask." }
@@ -1700,7 +1805,7 @@ If the register does not fit what actually happened (taking ownership when the u
 
       family: [
         {
-          id: 'dc_fam_birthday', name: "Missed Birthday", preview: "You didn't even call...", timestamp: "Monday",
+          id: 'dc_fam_birthday', name: "Missed Birthday", timestamp: "Monday",
           initialText: "You didn't even call on my birthday. Not a text. Nothing.",
           redFlags: ["i forgot", "it's just a birthday", "busy", ...universalRedFlags],
           greenFlags: ["i'm sorry", "that hurt", "i should have", "you matter", "my bad", ...universalGreenFlags],
@@ -1710,7 +1815,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. I just needed to hear that.", yellow: "It hurt.", red: "You forget every year." }
         },
         {
-          id: 'dc_fam_newpartner', name: "Feeling Replaced", preview: "You never have time for us anymore...", timestamp: "Yesterday",
+          id: 'dc_fam_newpartner', name: "Feeling Replaced", timestamp: "Yesterday",
           initialText: "You never have time for us anymore. Ever since you got with her, it's like we don't exist.",
           redFlags: ["that's not true", "overreacting", "drama", "she didn't", ...universalRedFlags],
           greenFlags: ["i hear you", "miss you too", "pulled away", "sorry", "balance", ...universalGreenFlags],
@@ -1720,9 +1825,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Okay. I just miss you.", yellow: "I hope so.", red: "Actions speak louder." }
         },
         {
-          id: 'dc_fam_event', name: "Skipped Family Event", preview: "You couldn't show up for one thing...", timestamp: "Saturday",
+          id: 'dc_fam_event', name: "Skipped Family Event", timestamp: "Saturday",
           initialText: "You couldn't show up for one thing. Do you know how embarrassing that was for us?",
-          redFlags: ["i was busy", "not a big deal", "always", "drama", ...universalRedFlags],
+          redFlags: ["i was busy", "not a big deal", "you always", "drama", ...universalRedFlags],
           greenFlags: ["embarrassed", "i should have been there", "sorry", "let you down", ...universalGreenFlags],
           translation: "They feel publicly let down. They need accountability and loyalty.",
           perfectResponse: "You're right. I should've been there. That was embarrassing and I let you down. I'm sorry.",
@@ -1730,9 +1835,9 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. Just be there next time.", yellow: "It was bad.", red: "You always have an excuse." }
         },
         {
-          id: 'dc_fam_loan', name: "Old Loan", preview: "You still haven't paid me back...", timestamp: "Now",
+          id: 'dc_fam_loan', name: "Old Loan", timestamp: "Now",
           initialText: "You still haven't paid me back. It's been months. Do you even plan to?",
-          redFlags: ["relax", "it's not that much", "always", "stop", ...universalRedFlags],
+          redFlags: ["relax", "it's not that much", "you always", "stop", ...universalRedFlags],
           greenFlags: ["you're right", "i owe you", "plan", "i hear you", "my bad", ...universalGreenFlags],
           translation: "They feel disrespected and taken advantage of. They need a real plan and accountability.",
           perfectResponse: "No excuse for that. I owe you and I've been dragging it. I'll send something this week. Can we set the plan right now?",
@@ -1740,7 +1845,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Yes. I just need a real plan.", yellow: "Okay. This week.", red: "I'll believe it when it hits my account." }
         },
         {
-          id: 'dc_fam_favoritism', name: "Favoritism", preview: "Mom always liked you more...", timestamp: "Tuesday",
+          id: 'dc_fam_favoritism', name: "Favoritism", timestamp: "Tuesday",
           initialText: "You were always the favorite. You got everything. I'm still dealing with what that did to me.",
           redFlags: ["not true", "you're exaggerating", "let it go", ...universalRedFlags],
           greenFlags: ["i hear you", "that hurt", "makes sense", "didn't realize", "hard", ...universalGreenFlags],
@@ -1753,7 +1858,7 @@ If the register does not fit what actually happened (taking ownership when the u
 
       coworker: [
         {
-          id: 'dc_co_promotion', name: "Passed Over", preview: "I should've gotten that promotion...", timestamp: "Monday",
+          id: 'dc_co_promotion', name: "Passed Over", timestamp: "Monday",
           initialText: "I should've gotten that promotion and you know it. I've been here longer and work twice as hard.",
           redFlags: ["calm down", "you'll get the next one", "not my decision", "whatever", ...universalRedFlags],
           greenFlags: ["i hear you", "that stings", "makes sense", "frustrating", "understand", ...universalGreenFlags],
@@ -1763,7 +1868,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. I just needed someone to acknowledge it.", yellow: "I just need to figure out my next move.", red: "Don't try to manage me right now." }
         },
         {
-          id: 'dc_co_gossip', name: "Heard You Talking", preview: "I heard what you said...", timestamp: "Yesterday",
+          id: 'dc_co_gossip', name: "Heard You Talking", timestamp: "Yesterday",
           initialText: "I heard what you said about me in that meeting. You threw me under the bus.",
           redFlags: ["that's not what i said", "calm down", "you're wrong", "overreacting", ...universalRedFlags],
           greenFlags: ["i hear you", "that felt like a betrayal", "sorry", "my bad", "shouldn't have", ...universalGreenFlags],
@@ -1773,7 +1878,7 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. I just need to trust you.", yellow: "Just don't do it again.", red: "I won't forget this." }
         },
         {
-          id: 'dc_co_excluded', name: "Left Out", preview: "Why wasn't I in that meeting?", timestamp: "This Morning",
+          id: 'dc_co_excluded', name: "Left Out", timestamp: "This Morning",
           initialText: "Why wasn't I included in that meeting? That affects my work directly and nobody told me.",
           redFlags: ["not a big deal", "i forgot", "you wouldn't have added much", ...universalRedFlags],
           greenFlags: ["you're right", "should have included you", "my bad", "i hear you", "fix", ...universalGreenFlags],
@@ -1783,17 +1888,17 @@ If the register does not fit what actually happened (taking ownership when the u
           followUp: { green: "Thank you. I just need to be in the loop.", yellow: "Please make sure it doesn't happen again.", red: "This is why I don't trust the process here." }
         },
         {
-          id: 'dc_co_blamed', name: "Blamed Unfairly", preview: "Everyone thinks it was my fault...", timestamp: "Friday",
+          id: 'dc_co_blamed', name: "Blamed Unfairly", timestamp: "Friday",
           initialText: "Everyone thinks it was my fault and you didn't say anything. You were right there.",
           redFlags: ["not my problem", "you handled it", "calm down", "whatever", ...universalRedFlags],
           greenFlags: ["you're right", "should have said something", "i hear you", "sorry", "back you up", ...universalGreenFlags],
           translation: "They feel abandoned and exposed. They need someone to have their back.",
-          perfectResponse: "You're right. I should've said something and I didn't. That left you hanging — I'm sorry.",
+          perfectResponse: "You're right. I should've said something and I didn't. That left you hanging—I'm sorry.",
           tips: "Loyalty matters at work. Acknowledge where you fell short.",
           followUp: { green: "Thank you. I just needed you to acknowledge it.", yellow: "Please back me up next time.", red: "I can't count on you." }
         },
         {
-          id: 'dc_co_overload', name: "Unrealistic Ask", preview: "This is too much for one person...", timestamp: "Now",
+          id: 'dc_co_overload', name: "Unrealistic Ask", timestamp: "Now",
           initialText: "This is too much for one person. I've been saying it for weeks and nothing changes.",
           redFlags: ["everyone is busy", "figure it out", "not my fault", "whatever", ...universalRedFlags],
           greenFlags: ["i hear you", "that's not sustainable", "too much", "makes sense", "let's fix", ...universalGreenFlags],
@@ -1825,7 +1930,9 @@ If the register does not fit what actually happened (taking ownership when the u
     let pendingWinPerfect = "";
 
     function resetProgressState() {
-      resetOpenerVariety();
+      // Deliberately NOT resetting the opener/closer history here. It used to
+      // reset per scenario, which is why the same favourite phrase opened the
+      // first reply of every scenario the user tried.
       gradeHistory = [];
       consecutiveReds = 0;
       scenarioWon = false;
@@ -2022,6 +2129,21 @@ If the register does not fit what actually happened (taking ownership when the u
       return pool[dayIndex % pool.length];
     }
 
+    // The inbox row shows the message itself, so it is derived rather than
+    // stored. Fifteen of the hand-written previews had drifted away from the
+    // text they were supposed to be previewing.
+    function previewText(scenario) {
+      return truncateForPrompt((scenario && scenario.initialText) || "", 90);
+    }
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
     function initScenarios() {
       const listContainer = document.getElementById('scenario-list');
       listContainer.innerHTML = '';
@@ -2049,7 +2171,7 @@ If the register does not fit what actually happened (taking ownership when the u
                  ${done ? `<i class="fas fa-check-circle text-green-500 text-sm" title="Completed"></i>` : ``}
                </div>
              </div>
-             <p class="text-gray-500 text-sm truncate leading-snug">${scen.preview}</p>
+             <p class="text-gray-500 text-sm truncate leading-snug">${escapeHtml(previewText(scen))}</p>
            </div>`;
         listContainer.appendChild(el);
       });
@@ -2070,7 +2192,7 @@ If the register does not fit what actually happened (taking ownership when the u
                ${dailyDone ? `<i class="fas fa-check-circle text-green-500 text-sm"></i>` : ``}
              </div>
            </div>
-           <p class="text-gray-500 text-sm truncate leading-snug">${daily.preview}</p>
+           <p class="text-gray-500 text-sm truncate leading-snug">${escapeHtml(previewText(daily))}</p>
          </div>`;
       listContainer.appendChild(dailyEl);
     }
@@ -2119,7 +2241,7 @@ If the register does not fit what actually happened (taking ownership when the u
     function openCustomScenarioModal() {
       updateCustomModalCopy();
       setCustomStartBusy(false, "Start");
-      setCustomUploadStatus(customImageDataUrl ? `Screenshot ready: ${customImageName || "Selected image"}` : "No screenshot selected");
+      setCustomUploadStatus("");
       document.getElementById('custom-modal').classList.remove('hidden');
       document.getElementById('custom-input').focus();
     }
@@ -2143,133 +2265,6 @@ If the register does not fit what actually happened (taking ownership when the u
       btn.innerText = label;
       btn.classList.toggle('opacity-60', !!busy);
       btn.classList.toggle('cursor-not-allowed', !!busy);
-    }
-
-    function resetCustomImageSelection() {
-      customImageDataUrl = "";
-      customImageName = "";
-      const input = document.getElementById('custom-image-input');
-      if (input) input.value = "";
-      setCustomUploadStatus("No screenshot selected");
-    }
-
-    function triggerCustomImageUpload() {
-      if (customScenarioBusy) return;
-      const input = document.getElementById('custom-image-input');
-      if (input) input.click();
-    }
-
-    function readFileAsDataUrl(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ""));
-        reader.onerror = () => reject(new Error("Unable to read image file."));
-        reader.readAsDataURL(file);
-      });
-    }
-
-    function loadImageFromDataUrl(dataUrl) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error("Invalid image."));
-        img.src = dataUrl;
-      });
-    }
-
-    function estimateBase64Bytes(base64) {
-      return Math.ceil((String(base64 || "").length * 3) / 4);
-    }
-
-    async function optimizeCustomImage(file) {
-      const rawDataUrl = await readFileAsDataUrl(file);
-      const rawBase64 = rawDataUrl.split(',')[1] || "";
-      if (estimateBase64Bytes(rawBase64) <= 1700000) return rawDataUrl;
-
-      const img = await loadImageFromDataUrl(rawDataUrl);
-      const maxEdge = 1600;
-      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
-      const w = Math.max(1, Math.round(img.width * scale));
-      const h = Math.max(1, Math.round(img.height * scale));
-
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error("Canvas not supported.");
-
-      ctx.drawImage(img, 0, 0, w, h);
-
-      let quality = 0.9;
-      let optimized = canvas.toDataURL('image/jpeg', quality);
-      while (estimateBase64Bytes(optimized.split(',')[1] || "") > 1700000 && quality > 0.55) {
-        quality -= 0.1;
-        optimized = canvas.toDataURL('image/jpeg', quality);
-      }
-      return optimized;
-    }
-
-    async function handleCustomImageSelect(event) {
-      const file = event && event.target && event.target.files ? event.target.files[0] : null;
-      if (!file) return;
-
-      if (!String(file.type || "").startsWith("image/")) {
-        resetCustomImageSelection();
-        setCustomUploadStatus("Please select an image file.", true);
-        return;
-      }
-
-      try {
-        setCustomUploadStatus("Optimizing screenshot...");
-        customImageDataUrl = await optimizeCustomImage(file);
-        customImageName = file.name || "screenshot";
-        setCustomUploadStatus(`Screenshot ready: ${customImageName}`);
-      } catch (e) {
-        console.warn("Image prep failed", e);
-        resetCustomImageSelection();
-        setCustomUploadStatus("Couldn’t process that screenshot. Try another image.", true);
-      }
-    }
-
-    async function handleCustomPasteImage(event) {
-      if (customScenarioBusy) return;
-
-      const clipboard = event && event.clipboardData;
-      if (!clipboard) return;
-
-      let file = null;
-      const items = clipboard.items ? Array.from(clipboard.items) : [];
-      for (const item of items) {
-        if (item && item.kind === 'file' && String(item.type || "").startsWith('image/')) {
-          file = item.getAsFile();
-          break;
-        }
-      }
-
-      if (!file && clipboard.files && clipboard.files.length) {
-        const first = clipboard.files[0];
-        if (String(first.type || "").startsWith('image/')) file = first;
-      }
-
-      if (!file) return;
-
-      event.preventDefault();
-      try {
-        setCustomUploadStatus("Processing pasted screenshot...");
-        customImageDataUrl = await optimizeCustomImage(file);
-        customImageName = "Pasted screenshot";
-        setCustomUploadStatus("Screenshot pasted and ready.");
-      } catch (e) {
-        console.warn("Pasted image prep failed", e);
-        resetCustomImageSelection();
-        setCustomUploadStatus("Couldn’t process pasted screenshot. Try upload instead.", true);
-      }
-    }
-
-    function parseDataUrlImage(dataUrl) {
-      const m = String(dataUrl || "").match(/^data:([^;]+);base64,(.+)$/);
-      if (!m) throw new Error("Invalid image data.");
-      return { mimeType: m[1], imageBase64: m[2] };
     }
 
     function inferOtherMessageFromInput(rawText) {
@@ -2340,9 +2335,8 @@ If the register does not fit what actually happened (taking ownership when the u
       };
     }
 
-    async function analyzeCustomIntake(inputText, imageDataUrl) {
+    async function analyzeCustomIntake(inputText) {
       const rawText = String(inputText || "").trim();
-      const hasImage = !!imageDataUrl;
       const person = getPersonNoun();
 
       const voicePrompt = philVoicePrompt();
@@ -2364,14 +2358,8 @@ Return JSON ONLY:
   "summary": "1 short sentence for what to notice"
 }`;
 
-      let response = "";
-      if (rawText) {
-        response = await callGemini(`${prompt}\n\nConversation to analyze:\n"""${rawText}"""`);
-      } else if (hasImage) {
-        response = await callGeminiWithImage(`${prompt}\n\nUse the screenshot to read the conversation.`, imageDataUrl);
-      } else {
-        throw new Error("No input provided.");
-      }
+      if (!rawText) throw new Error("No input provided.");
+      const response = await callGemini(`${prompt}\n\nConversation to analyze:\n"""${rawText}"""`);
 
       const json = parseGeminiJson(response);
       return normalizeCustomDecode(json, rawText);
@@ -2431,9 +2419,8 @@ Return JSON ONLY:
 
       const inputEl = document.getElementById('custom-input');
       const input = String(inputEl.value || "").trim();
-      const hasImage = !!customImageDataUrl;
-      if (!input && !hasImage) {
-        setCustomUploadStatus("Paste text or upload a screenshot to continue.", true);
+      if (!input) {
+        setCustomUploadStatus("Paste the message you want to practice against.", true);
         inputEl.focus();
         return;
       }
@@ -2445,16 +2432,10 @@ Return JSON ONLY:
         try {
           if (!aiAvailable()) throw new Error('daily AI cap reached');
           recordAiRep();
-          decoded = await analyzeCustomIntake(input, customImageDataUrl);
+          decoded = await analyzeCustomIntake(input);
         } catch (e) {
           console.warn("Custom intake analysis failed", e);
-          if (input) decoded = fallbackCustomDecodeFromText(input);
-          else {
-            setCustomUploadStatus(aiAvailable()
-              ? "Couldn't read the screenshot. Try another image or paste text."
-              : "Screenshot reading needs AI, and today's is used up. Paste the text instead.", true);
-            return;
-          }
+          decoded = fallbackCustomDecodeFromText(input);
         }
 
         closeCustomScenarioModal();
@@ -2483,7 +2464,7 @@ Return JSON ONLY:
 
         startScenario(customScen);
         inputEl.value = '';
-        resetCustomImageSelection();
+        setCustomUploadStatus("");
       } finally {
         setCustomStartBusy(false, "Start");
       }
@@ -2548,23 +2529,31 @@ Return JSON ONLY:
         return;
       }
 
-      let score = 0, redHits = [], greenHits = [];
+      if (includesAnyPattern(lower, hardRedFlags)) {
+        lastGrade = 'red';
+        processFeedbackAndMaybeWin({
+          grade: 'red', title: 'Too Hot 🛑', badgeColor: 'bg-red-100 text-red-800',
+          message: "That kind of language breaks safety fast. Reset and try again."
+        }, activeScenario.perfectResponse, currentTranslation);
+        return;
+      }
 
-      activeScenario.redFlags.forEach(f => { if (lower.includes(f)) { score -= 10; redHits.push(f); } });
-      activeScenario.greenFlags.forEach(f => { if (lower.includes(f)) { score += 5; greenHits.push(f); } });
+      const redHits = activeScenario.redFlags.filter(f => matchesFlag(lower, f));
+      const greenHits = activeScenario.greenFlags.filter(f => matchesFlag(lower, f));
 
-      if (userText.split(' ').length < 2) score -= 1;
+      // Green work is allowed to outweigh one defensive phrase. The old rule
+      // failed the whole reply on a single red hit, so "You're right, I never
+      // really listen" scored red for the word "never".
+      let score = (greenHits.length * 5) - (redHits.length * 8);
+      if (userText.split(' ').filter(Boolean).length < 3) score -= 4;
 
       let feedback = {};
-      if (score <= -5 || redHits.length > 0) {
+      if (score <= -5) {
         lastGrade = 'red';
-        const profanity = ["bitch", "fuck", "shit", "asshole", "cunt", "you suck"];
-        const hit = redHits.find(r => profanity.some(p => r.includes(p)));
         let msg = `That landed defensive (“${redHits[0]}”).`;
-        if (hit) msg = "That kind of language breaks safety fast. Reset and try again.";
         if ((redHits[0] || "").includes("yes you")) msg = "Arguing facts usually makes it worse. Start with the feeling.";
         feedback = { grade: 'red', title: 'Too Hot 🛑', badgeColor: 'bg-red-100 text-red-800', message: msg };
-      } else if (score >= 4 || greenHits.length > 0) {
+      } else if (score >= 4) {
         lastGrade = 'green';
         feedback = { grade: 'green', title: 'Grounded ✅', badgeColor: 'bg-green-100 text-green-800', message: `Good work. You led with validation (“${greenHits[0] || 'the feeling'}”).` };
       } else {
@@ -2573,6 +2562,19 @@ Return JSON ONLY:
       }
 
       processFeedbackAndMaybeWin(feedback, activeScenario.perfectResponse, currentTranslation);
+    }
+
+    // Flags are matched on word boundaries. Plain substring matching read
+    // "i did" inside "I didn't" and "wrong" inside "I was wrong".
+    const flagPatternCache = {};
+    function matchesFlag(lowerText, flag) {
+      const key = String(flag || "");
+      if (!key) return false;
+      if (!flagPatternCache[key]) {
+        const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/'/g, "['\u2019]");
+        flagPatternCache[key] = new RegExp('(^|[^a-z])' + escaped + '($|[^a-z])', 'i');
+      }
+      return flagPatternCache[key].test(lowerText);
     }
 
     // GEMINI (via GAS server-side proxy — JSONP avoids CORS/redirect restrictions)
@@ -2596,11 +2598,6 @@ Return JSON ONLY:
       });
     }
 
-    async function callGeminiWithImage(prompt, imageDataUrl) {
-      // Image proxy not supported via JSONP — falls back to keyword grading
-      throw new Error('Image analysis requires direct API access.');
-    }
-
     function getChatTimeHeader(scenario) {
       const ts = (scenario && scenario.timestamp) || '';
       if (/^\d+:\d+\s*(AM|PM)$/i.test(ts)) return 'Today ' + ts;
@@ -2610,26 +2607,33 @@ Return JSON ONLY:
       return 'Today';
     }
 
-    function buildAIPersonaPrompt() {
-      const role = practicePerson;
-      if (role === 'coworker') {
-        return wifePersona === 'pursuer'
-          ? "Coworker is a pursuer/direct style: stressed by ambiguity, presses for status, timelines, accountability, and clear next steps while staying professional."
-          : "Coworker is a withdrawer/reserved style: stressed by pressure, gets brief or guarded, wants space to think, and prefers concise, practical updates.";
+    // One profile per person + persona. This was two near-identical switch
+    // blocks (buildAIPersonaPrompt and buildRoleplayPrompt) whose output was
+    // pasted into the same prompt, so every grading call described the other
+    // person twice in slightly different words.
+    const personaProfiles = {
+      wife: {
+        pursuer: "escalates when she feels alone; wants reassurance, teamwork, priority, and proof she matters",
+        withdrawer: "goes quiet or distant when flooded; wants calm, space, respect, and no chasing"
+      },
+      girlfriend: {
+        pursuer: "reads distance as disinterest; asks for reassurance, consistency, closeness, and signs she is chosen",
+        withdrawer: "pulls back when pressured; protects herself with short replies and needs calm, non-demanding connection"
+      },
+      family: {
+        pursuer: "gets more intense when they feel ignored; wants contact, reassurance, respect, and proof the bond still matters",
+        withdrawer: "gets quiet or guarded when overwhelmed; wants respect, room to breathe, and no pressure to explain instantly"
+      },
+      coworker: {
+        pursuer: "is stressed by ambiguity; presses for status, timelines, ownership, and clear next steps while staying professional",
+        withdrawer: "is stressed by pressure; gets brief or guarded, wants space to think, and prefers concise, practical updates"
       }
-      if (role === 'family') {
-        return wifePersona === 'pursuer'
-          ? "Family member is a pursuer/anxious style: gets more intense when they feel ignored, wants contact, reassurance, and proof the relationship still matters."
-          : "Family member is a withdrawer/avoidant style: gets quiet or guarded when overwhelmed, wants respect, room to breathe, and no pressure to explain instantly.";
-      }
-      if (role === 'girlfriend') {
-        return wifePersona === 'pursuer'
-          ? "Girlfriend is a pursuer/anxious style: reads distance as disinterest, asks for reassurance, consistency, and visible care."
-          : "Girlfriend is a withdrawer/avoidant style: pulls back when pressured, protects herself with short replies, and needs calm, non-demanding connection.";
-      }
-      return wifePersona === 'pursuer'
-        ? "Wife is a pursuer/anxious style: escalates when she feels alone, wants reassurance, teamwork, and proof she matters."
-        : "Wife is a withdrawer/avoidant style: goes quiet or distant when flooded, wants calm, space, respect, and no chasing.";
+    };
+
+    function buildPersonaProfile() {
+      const profile = personaProfiles[practicePerson] || personaProfiles.wife;
+      const style = profile[wifePersona] || profile.pursuer;
+      return `The ${getPersonNoun()} is a ${wifePersona}: ${style}.`;
     }
 
     function buildPersonaReplyRules(otherPerson) {
@@ -2639,18 +2643,25 @@ Return JSON ONLY:
         girlfriend: "- Girlfriend context: make it about reassurance, consistency, closeness, feeling chosen, or fear of disconnection.",
         wife: "- Wife context: make it about partnership, home/teamwork, emotional safety, feeling prioritized, or carrying things alone."
       };
-      const styleRules = wifePersona === 'pursuer'
+      // A scenario that opens with the other person pulling away cannot be
+      // played as a pursuer. Asking for both at once is what made "The
+      // Shutdown" hand the wife's own "I'm fine" back to the user.
+      const withdrawing = !!(activeScenario && activeScenario.stance === 'withdraw');
+      const styleRules = (wifePersona === 'pursuer' && !withdrawing)
         ? "- Pursuer style: the next text can press, ask again, protest, seek reassurance, or name the hurt more directly. A good user reply may lower the heat, but the person should not become instantly calm or perfectly grounded."
         : "- Withdrawer style: the next text can be brief, cautious, distant, or self-protective. Only ask for space/time when the transcript shows flooding or pressure, and tie it to the specific issue.";
+      const stanceRule = withdrawing
+        ? `- This scenario opens with the ${otherPerson} pulling away, and they stay in that posture. When the user handles it badly they get colder and shorter, never chattier or chasing. Even a cold reply carries the hurt, so do not answer with one bare word.`
+        : "";
 
       return `OTHER PERSON REPLY STYLE:
 - The reply is from the ${otherPerson}, not from the user and not from a coach.
+- Every line in the transcript marked as the ${otherPerson} is something they already said. Never quote those words back as if the user said them.
 - Never switch sides. If USER apologized, explained, or offered repair, the reply should react to that message as the ${otherPerson}; it should not apologize for what USER did.
 - Do not take ownership of USER's mistake. If the scenario says USER was late, distant, on the phone, forgot, changed plans, missed a deadline, or did not reply, OTHER should react to that impact instead of saying they did it.
-- Keep the other person true to the selected pursuer/withdrawer style. They can be imperfect, guarded, anxious, pressured, or hurt.
 - Do not make the reply sound like "The Grounded Response." Save calm repair language for perfectResponse only.
 - Avoid generic reusable lines like "I just need some space right now", "can we talk about this later", "okay thanks", or "I don't know." Make the reply specific to the current issue.
-${styleRules}
+${styleRules}${stanceRule ? "\n" + stanceRule : ""}
 ${contextRules[practicePerson] || contextRules.wife}
 - Avoid abusive language, slurs, threats, or cartoon villain lines. Realistic pressure is okay; cruelty is not.`;
     }
@@ -2661,11 +2672,17 @@ ${contextRules[practicePerson] || contextRules.wife}
       return clean.slice(0, max - 1).trim() + "…";
     }
 
-    function buildCompactTranscript(limit = 8) {
+    // Speaker labels are a parameter because the two prompts read the same
+    // transcript from opposite chairs. When the model is writing the other
+    // person's next text it has to be told which lines are its own, or it
+    // quotes them back at the user ("You say you're fine, but...").
+    function buildCompactTranscript(limit = 8, labels) {
+      const otherLabel = (labels && labels.other) || 'OTHER';
+      const userLabel = (labels && labels.user) || 'USER';
       return chatHistory
         .filter(m => m && m.text && !/^Context:/i.test(String(m.text)))
         .slice(-limit)
-        .map(m => `${m.role === 'model' ? 'OTHER' : 'USER'}: ${truncateForPrompt(m.text, 240)}`)
+        .map(m => `${m.role === 'model' ? otherLabel : userLabel}: ${truncateForPrompt(m.text, 240)}`)
         .join("\n");
     }
 
@@ -2673,7 +2690,7 @@ ${contextRules[practicePerson] || contextRules.wife}
       if (!scenario) return "";
       const parts = [
         scenario.name ? `Scenario: ${scenario.name}` : "",
-        scenario.initialText ? `Opening text: ${truncateForPrompt(scenario.initialText, 220)}` : "",
+        scenario.initialText ? `Opening text, sent by the ${getPersonNoun()}: ${truncateForPrompt(scenario.initialText, 220)}` : "",
         scenario.translation ? `Original hidden meaning: ${truncateForPrompt(scenario.translation, 180)}` : "",
         scenario.tips ? `Coach note: ${truncateForPrompt(scenario.tips, 160)}` : ""
       ];
@@ -2690,8 +2707,7 @@ ${contextRules[practicePerson] || contextRules.wife}
       const otherPerson = getPersonNoun();
       const transcript = buildCompactTranscript();
 
-      return `${buildAIPersonaPrompt()}
-${buildRoleplayPrompt()}
+      return `${buildPersonaProfile()}
 ${philVoicePrompt()}
 
 You are running a texting practice turn. Use the whole recent transcript, not only the last message.
@@ -2723,12 +2739,14 @@ GRADING RULES:
 
 ${buildOpenerInstruction(scenario)}
 
+${buildCloserInstruction(scenario)}
+
 Return valid JSON ONLY:
 {
   "grade": "green"|"yellow"|"red",
   "title": "Title (short)",
   "message": "Feedback (1-3 short sentences)",
-  "perfectResponse": "The Grounded Response: 1-2 short text-message sentences (18-34 words) the USER sends to the ${otherPerson}, replying to the ${otherPerson}'s most recent message. Reflect the ${otherPerson}'s feeling/need first, then reconnect; include a respectful timeout and return plan only when flooding is the secure move. Grounded and human, never a rewrite of the USER's own words.",
+  "perfectResponse": "The Grounded Response: 1-2 short text-message sentences (18-34 words) the USER sends to the ${otherPerson}, replying to the ${otherPerson}'s most recent message. Reflect the ${otherPerson}'s feeling/need first, then follow the assigned ENDING for this turn; include a respectful timeout and return plan only when flooding is the secure move. Grounded and human, never a rewrite of the USER's own words.",
   "translation": "Hidden emotion/need behind the latest other-person message (1 sentence)"
 }`;
     }
@@ -2761,58 +2779,35 @@ Return valid JSON ONLY:
       }
     }
 
-    function buildRoleplayPrompt() {
-      const role = practicePerson;
-      if (role === 'coworker') {
-        return wifePersona === 'pursuer'
-          ? "Roleplay the coworker as direct/pursuer: stressed by ambiguity, pushing for status, timelines, ownership, and clarity while staying professional."
-          : "Roleplay the coworker as reserved/withdrawer: overwhelmed by pressure, brief, guarded, practical, and needing space to think before committing.";
-      }
-      if (role === 'family') {
-        return wifePersona === 'pursuer'
-          ? "Roleplay the family member as anxious/pursuer: intensified by feeling ignored, wanting contact, reassurance, respect, and proof the bond matters."
-          : "Roleplay the family member as avoidant/withdrawer: guarded when overwhelmed, wanting space, respect, and less pressure.";
-      }
-      if (role === 'girlfriend') {
-        return wifePersona === 'pursuer'
-          ? "Roleplay the girlfriend as anxious/pursuer: worried by distance, asking for reassurance, consistency, closeness, and signs she is chosen."
-          : "Roleplay the girlfriend as avoidant/withdrawer: self-protective, short when pressured, needing calm, space, and non-demanding connection.";
-      }
-      return wifePersona === 'pursuer'
-        ? "Roleplay the wife as anxious/pursuer: upset when she feels alone, pressing for reassurance, teamwork, priority, and proof she matters."
-        : "Roleplay the wife as avoidant/withdrawer: quiet or distant when flooded, needing calm, space, respect, and no chasing.";
-    }
-
     async function generateReplyWithGemini() {
-      const personaPrompt = buildRoleplayPrompt();
-      const role = practicePerson;
+      const otherPerson = getPersonNoun();
+      const selfLabel = otherPerson.toUpperCase() + " (you)";
 
       const behaviorGuide =
 `Conversation rules:
 - Use English only. "translation" means hidden emotion/need, not another language.
 - Write at an 8th grade reading level.
-- Keep it like texting (1–2 sentences).
+- Keep it like texting (1-2 sentences).
 - If LAST_GRADE is GREEN: lower intensity one notch, but keep the person true to their pursuer/withdrawer style.
 - If LAST_GRADE is YELLOW: keep tension active and only slightly open.
 - If LAST_GRADE is RED: increase tension without insults, slurs, threats, or abuse.
 - Do not make the other person's reply sound like the user's grounded rewrite or like a therapist.
-- Respond to the recent transcript, not only the last message.
-- Speaker test: write only what OTHER would text back to USER right now. Do not apologize for USER's actions or continue USER's repair.
-- Ownership test: when the conflict is about USER's behavior, OTHER should not say "I didn't answer", "I was late", "I forgot", or similar ownership phrases unless OTHER actually did that in the transcript.
+- React to the USER's most recent message. Use the earlier lines for context, but do not summarize the conversation back.
+- Ownership test: when the conflict is about USER's behavior, do not say "I didn't answer", "I was late", "I forgot", or similar ownership phrases unless the ${otherPerson} actually did that in the transcript.
 - Specificity test: the reply must mention or clearly refer to one concrete detail from RECENT_TRANSCRIPT or Scenario. Do not send a generic space/talk-later response unless the transcript specifically shows flooding or a request for space.
 - If the person needs space, include the real reason from this conversation, not a standalone line.
-${buildPersonaReplyRules(getPersonNoun())}
+${buildPersonaReplyRules(otherPerson)}
 Return valid JSON only:
 { "reply": "next message from the other person", "translation": "hidden emotion/need" }`;
 
       const systemPrompt =
-`${personaPrompt}
-ROLE: ${role.toUpperCase()}
+`You are roleplaying as the ${otherPerson} in a text conversation. Write only their next text message.
+${buildPersonaProfile()}
 LAST_GRADE: ${lastGrade}
 CURRENT_HIDDEN_MEANING: ${currentTranslation}
 ${buildScenarioContextSummary(activeScenario)}
-RECENT_TRANSCRIPT:
-${buildCompactTranscript()}
+RECENT_TRANSCRIPT (lines marked "${selfLabel}" are your own past messages):
+${buildCompactTranscript(8, { other: selfLabel, user: "USER (the person texting you)" })}
 ${behaviorGuide}`;
 
       try {
@@ -2958,7 +2953,7 @@ ${behaviorGuide}`;
         }
         recordAiRep();
 
-        const personaHint = buildAIPersonaPrompt();
+        const personaHint = buildPersonaProfile();
         const voicePrompt = philVoicePrompt();
 
         const prompt =
