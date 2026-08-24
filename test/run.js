@@ -168,39 +168,69 @@ section('escaping: user text never reaches innerHTML raw');
 }
 
 // ------------------------------------------------------------ scenario list --
-section('scenario list: whole pool, stable order, searchable');
+section('scenario list: three at a time, refresh cycles');
 {
   const { app, sandbox } = loadApp();
   app.setState({ practicePerson: 'wife' });
 
-  const rows = () => sandbox.__elements.get('scenario-list').children;
-  const titles = () => rows()
+  const titles = () => sandbox.__elements.get('scenario-list').children
     .map(el => (String(el.innerHTML).match(/<h3[^>]*>([^<]*)<\/h3>/) || [])[1])
     .filter(Boolean);
+  const scenarios = () => titles().filter(t => t !== 'Daily Challenge');
+  const search = q => { sandbox.__elements.get('scenario-search').value = q; app.fns.initScenarios(); };
 
   app.fns.initScenarios();
-  const first = titles();
-  check('every scenario is listed (12 wife + daily)', first.length, app.pools.wife.length + 1);
-  check('daily challenge is first', first[0], 'Daily Challenge');
-  check('scenarios use their own names', first.slice(1), app.pools.wife.map(s => s.name));
+  const page1 = scenarios();
+  check('shows three scenarios, not the whole pool', page1.length, 3);
+  check('daily challenge sits above them', titles()[0], 'Daily Challenge');
+  check('they are the first three in pool order', page1, app.pools.wife.slice(0, 3).map(s => s.name));
 
+  // The old build reshuffled here, which is how you lost the one you were on.
   app.fns.initScenarios();
-  check('order is stable across renders', titles(), first);
+  app.fns.initScenarios();
+  check('re-rendering does not change the three', scenarios(), page1);
 
-  sandbox.__elements.get('scenario-search').value = 'money';
-  app.fns.initScenarios();
-  const filtered = titles();
-  check('search narrows the list', filtered.length < first.length, true);
-  check('search hides the daily row', filtered.indexOf('Daily Challenge'), -1);
-  check('search returns at least one match', filtered.length > 0, true);
+  app.fns.cycleScenarios();
+  const page2 = scenarios();
+  check('refresh moves to the next three', page2, app.pools.wife.slice(3, 6).map(s => s.name));
+  check('refresh shows a different set', page2.some(t => page1.includes(t)), false);
+  check('and that set is then stable too', (app.fns.initScenarios(), scenarios()), page2);
 
-  sandbox.__elements.get('scenario-search').value = 'zzzzz-no-such-scenario';
-  app.fns.initScenarios();
-  check('no matches renders no rows', titles().length, 0);
+  const seen = [...page1, ...page2];
+  for (let i = 2; i < app.pools.wife.length / 3; i++) { app.fns.cycleScenarios(); seen.push(...scenarios()); }
+  check('cycling reaches every scenario', seen.slice().sort(), app.pools.wife.map(s => s.name).sort());
 
-  sandbox.__elements.get('scenario-search').value = '';
-  app.fns.initScenarios();
-  check('clearing search restores the list', titles(), first);
+  app.fns.cycleScenarios();
+  check('and wraps back to the first three', scenarios(), page1);
+
+  // Search is the escape hatch: it has to reach scenarios that are not on the
+  // page currently showing.
+  const offPage = app.pools.wife[9];
+  search(offPage.name.toLowerCase());
+  check('search finds a scenario from another page', scenarios(), [offPage.name]);
+  check('search hides the daily row', titles().includes('Daily Challenge'), false);
+
+  search('zzzz-nothing');
+  check('no matches renders no scenarios', scenarios().length, 0);
+
+  search('');
+  check('clearing search restores the current three', scenarios(), page1);
+
+  // Each person keeps their own place in their own pool.
+  app.fns.cycleScenarios();
+  const wifePage = app.fns.scenarioPageFor('wife');
+  app.setState({ practicePerson: 'coworker' });
+  check('a different person starts at their first three', app.fns.scenarioPageFor('coworker'), 0);
+  app.setState({ practicePerson: 'wife' });
+  check('and the first person keeps their place', app.fns.scenarioPageFor('wife'), wifePage);
+
+  const persisted = loadApp({ storage: { gp_scenario_page_v1: JSON.stringify({ wife: 2 }) } });
+  persisted.app.setState({ practicePerson: 'wife' });
+  persisted.app.fns.initScenarios();
+  const restored = persisted.sandbox.__elements.get('scenario-list').children
+    .map(el => (String(el.innerHTML).match(/<h3[^>]*>([^<]*)<\/h3>/) || [])[1])
+    .filter(Boolean).filter(t => t !== 'Daily Challenge');
+  check('the page survives a reload', restored, app.pools.wife.slice(6, 9).map(s => s.name));
 }
 
 // ------------------------------------------------------------------ report --

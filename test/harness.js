@@ -137,7 +137,8 @@ const EXPORTS = `
   getState() { return { practicePerson, lastGrade, activeScenario }; },
   fns: {
     analyzeResponseLocal, assessSecureBoundary, matchesFlag, polishGroundedResponse,
-    escapeHtml, initScenarios, setGroundedResponse, toggleGroundedResponse,
+    escapeHtml, initScenarios, cycleScenarios, scenarioPageFor, scenarioPageCount,
+    setGroundedResponse, toggleGroundedResponse,
     recordAiRep, refundAiRep, aiRepsRemaining, loadAiUsage
   }
 };

@@ -265,7 +265,7 @@
 
         <div class="flex items-center gap-2">
           <h1 class="ios-toolbar-title">Messages</h1>
-          <button onclick="initScenarios()" class="text-gray-400 hover:text-blue-500 transition-colors pt-1" aria-label="Refresh scenarios">
+          <button onclick="cycleScenarios()" class="text-gray-400 hover:text-blue-500 transition-colors pt-1" aria-label="Show the next three scenarios" title="Next three">
             <svg class="gi gi-sync-alt" aria-hidden="true"><use href="#i-sync-alt"></use></svg>
           </button>
         </div>
@@ -2223,22 +2223,58 @@ ${banLine}`.replace(/\n\n+/g, '\n');
         .replace(/"/g, "&quot;");
     }
 
+    // Three at a time, and the set only changes when the refresh button is
+    // pressed. It used to reshuffle on every return to this screen, so the
+    // scenario you were part way through vanished behind a new random three.
+    const SCENARIOS_PER_PAGE = 3;
+    const SCENARIO_PAGE_KEY = "gp_scenario_page_v1";
+
+    function loadScenarioPages() {
+      try { return JSON.parse(safeStorage.getItem(SCENARIO_PAGE_KEY) || "{}") || {}; }
+      catch (e) { return {}; }
+    }
+
+    function scenarioPageFor(person) {
+      const pages = loadScenarioPages();
+      return Number(pages[person]) || 0;
+    }
+
+    function scenarioPageCount(person) {
+      const pool = scenarioPools[person] || scenarioPools.wife;
+      return Math.max(1, Math.ceil(pool.length / SCENARIOS_PER_PAGE));
+    }
+
+    // The refresh button's whole job. Wraps back to the first three at the end.
+    function cycleScenarios() {
+      const pages = loadScenarioPages();
+      pages[practicePerson] = (scenarioPageFor(practicePerson) + 1) % scenarioPageCount(practicePerson);
+      safeStorage.setItem(SCENARIO_PAGE_KEY, JSON.stringify(pages));
+
+      const searchEl = document.getElementById('scenario-search');
+      if (searchEl) searchEl.value = '';   // a page makes no sense inside a search
+      initScenarios();
+
+      const list = document.getElementById('scenario-list');
+      if (list) list.scrollIntoView({ block: 'nearest' });
+    }
+
     function initScenarios() {
       const listContainer = document.getElementById('scenario-list');
       listContainer.innerHTML = '';
 
-      // The list used to show 3 of the 12 scenarios, reshuffled on every
-      // return to this screen, all titled with the same person's name. There
-      // was no way to find the one you were part way through. Full pool, fixed
-      // order, real titles, searchable.
       const pool = scenarioPools[practicePerson] || scenarioPools.wife;
       const searchEl = document.getElementById('scenario-search');
       const query = String((searchEl && searchEl.value) || '').trim().toLowerCase();
+      // Search is the way to reach any one scenario directly, so it looks at
+      // the whole pool rather than the three currently on screen.
+      const pageCount = scenarioPageCount(practicePerson);
+      const page = Math.min(scenarioPageFor(practicePerson), pageCount - 1);
+      const start = page * SCENARIOS_PER_PAGE;
       const matches = query
         ? pool.filter(s => (
             String(s.name || '') + ' ' + String(s.initialText || '') + ' ' + String(s.tips || '')
           ).toLowerCase().indexOf(query) !== -1)
-        : pool;
+        : pool.slice(start, start + SCENARIOS_PER_PAGE);
 
       const colors = ['bg-gray-400', 'bg-blue-400', 'bg-green-400', 'bg-purple-400', 'bg-orange-400'];
       const avatarLetter = getPersonAvatar();
@@ -2270,11 +2306,14 @@ ${banLine}`.replace(/\n\n+/g, '\n');
       }
 
       const doneCount = pool.filter(s => isScenarioCompleted(practicePerson, s.id)).length;
+      const position = query
+        ? `${matches.length} match${matches.length === 1 ? '' : 'es'}`
+        : `${start + 1}\u2013${Math.min(start + SCENARIOS_PER_PAGE, pool.length)} of ${pool.length}`;
       const header = document.createElement('div');
       header.className = "px-4 pt-4 pb-1 flex items-baseline justify-between";
       header.innerHTML =
         `<span class="text-xs font-bold uppercase tracking-widest text-gray-400">${escapeHtml(displayName)}</span>
-         <span class="text-xs text-gray-400">${doneCount} of ${pool.length} done</span>`;
+         <span class="text-xs text-gray-400">${position} &middot; ${doneCount} done</span>`;
       listContainer.appendChild(header);
 
       if (!matches.length) {
