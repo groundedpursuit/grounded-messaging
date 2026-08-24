@@ -233,6 +233,59 @@ section('scenario list: three at a time, refresh cycles');
   check('the page survives a reload', restored, app.pools.wife.slice(6, 9).map(s => s.name));
 }
 
+section('roleplay prompt: the other person keeps their own side of the fight');
+{
+  const { app } = loadApp();
+  const scen = app.pools.family.find(s => s.id === 'fam_boundary');
+  const setup = persona => app.setState({
+    practicePerson: 'family', wifePersona: persona, activeScenario: scen,
+    lastGrade: 'red', currentTranslation: scen.translation,
+    chatHistory: [{ role: 'model', text: scen.initialText }, { role: 'user', text: "no i'm not" }]
+  });
+
+  // The coach note is advice for the USER ("Warm boundary = connection + limit").
+  // Handed to the model playing the other person, it performed the advice: five
+  // runs out of six replied "I'm not shutting you out, I just need space" - the
+  // user's own line, from the character who had just made that accusation.
+  setup('withdrawer');
+  const roleplay = app.fns.buildReplyPrompt();
+  const grading = app.fns.buildCombinedTurnPrompt(scen, "no i'm not");
+  check('scenario has a coach note to leak', typeof scen.tips === 'string' && scen.tips.length > 0, true);
+  check('the grading prompt keeps the coach note', grading.includes(scen.tips), true);
+  check('the roleplay prompt does not', roleplay.includes(scen.tips), false);
+  check('the roleplay prompt never carries the model answer', roleplay.includes(scen.perfectResponse), false);
+
+  check('roleplay prompt states whose complaint it is', /WHOSE COMPLAINT IT IS/.test(roleplay), true);
+  check('and forbids denying it back', /never says "I'm not that"|does not deny it back/.test(roleplay), true);
+
+  // A withdrawer in a scenario where the OTHER person opened with a complaint
+  // is a quieter version of that same person - not someone who now needs space.
+  check('withdrawer keeps the complaint when the scenario is not a withdrawal',
+    /do NOT ask for space/.test(roleplay), true);
+  check('withdrawer is told volume changes, not side',
+    /changes HOW MUCH the .* says, never what they want or who did what/.test(roleplay), true);
+
+  setup('pursuer');
+  const pursuing = app.fns.buildReplyPrompt();
+  check('pursuer presses their own point rather than defending',
+    /never start defending themselves against it/.test(pursuing), true);
+
+  // A scenario that opens with the other person pulling away is the opposite
+  // case, and still has to hold its posture.
+  const shutdown = app.pools.wife.find(s => s.id === 'shutdown');
+  check('the withdrawal scenario is still marked', shutdown.stance, 'withdraw');
+  app.setState({
+    practicePerson: 'wife', wifePersona: 'withdrawer', activeScenario: shutdown,
+    lastGrade: 'red', currentTranslation: shutdown.translation,
+    chatHistory: [{ role: 'model', text: shutdown.initialText }, { role: 'user', text: 'fine, be like that' }]
+  });
+  const withdrawn = app.fns.buildReplyPrompt();
+  check('a withdrawing scenario says they stay pulled away', /stay in that posture/.test(withdrawn), true);
+  check('and that they do not chase', /never chattier or chasing/.test(withdrawn), true);
+  check('a withdrawing scenario does not get the keep-pressing rule',
+    /do NOT ask for space/.test(withdrawn), false);
+}
+
 // ------------------------------------------------------------------ report --
 console.log('');
 if (failures.length) {

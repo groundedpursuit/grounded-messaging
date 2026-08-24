@@ -2872,17 +2872,33 @@ Return JSON ONLY:
       // played as a pursuer. Asking for both at once is what made "The
       // Shutdown" hand the wife's own "I'm fine" back to the user.
       const withdrawing = !!(activeScenario && activeScenario.stance === 'withdraw');
-      const styleRules = (wifePersona === 'pursuer' && !withdrawing)
-        ? "- Pursuer style: the next text can press, ask again, protest, seek reassurance, or name the hurt more directly. A good user reply may lower the heat, but the person should not become instantly calm or perfectly grounded."
-        : "- Withdrawer style: the next text can be brief, cautious, distant, or self-protective. Only ask for space/time when the transcript shows flooding or pressure, and tie it to the specific issue.";
+
+      // Every scenario without stance:'withdraw' opens with the other person
+      // raising a complaint, so a withdrawer persona there is a guarded version
+      // of the SAME person with the SAME grievance. Telling them to be
+      // "self-protective" and to "ask for space" in that situation made the
+      // model hand the user's own boundary line back to them: in Boundary Push
+      // the family member, who had just accused the user of shutting them out,
+      // replied "I'm not shutting you out, I just need space" - the user's part,
+      // in five runs out of six.
+      let styleRules;
+      if (wifePersona === 'pursuer' && !withdrawing) {
+        styleRules = `- Pursuer style: the next text can press, ask again, protest, seek reassurance, or name the hurt more directly. A good user reply may lower the heat, but the person should not become instantly calm or perfectly grounded. The ${otherPerson} is the one with the grievance here, so pressing means pressing THEIR point - if the user denies it, they push back on the denial ("then why does it feel like...", "you did the same thing last week"), they never start defending themselves against it.`;
+      } else if (withdrawing) {
+        styleRules = "- Withdrawer style: the next text can be brief, cautious, distant, or self-protective. Only ask for space/time when the transcript shows flooding or pressure, and tie it to the specific issue.";
+      } else {
+        styleRules = `- Withdrawer style: cooler and shorter, not chattier. Being a withdrawer changes HOW MUCH the ${otherPerson} says, never what they want or who did what. They opened this conversation because something is bothering THEM, so they keep that complaint - clipped, flat, guarded, maybe one hard question - and they do NOT ask for space, go quiet, or hand the subject back to the user.`;
+      }
       const stanceRule = withdrawing
-        ? `- This scenario opens with the ${otherPerson} pulling away, and they stay in that posture. When the user handles it badly they get colder and shorter, never chattier or chasing. Even a cold reply carries the hurt, so do not answer with one bare word.`
+        ? `- This scenario opens with the ${otherPerson} pulling away, and they stay in that posture. When the user handles it badly they get colder and shorter, never chattier or chasing - they do not demand an answer, ask why the user is giving up, or protest being left. Even a cold reply carries the hurt, so do not answer with one bare word.`
         : "";
 
       return `OTHER PERSON REPLY STYLE:
 - The reply is from the ${otherPerson}, not from the user and not from a coach.
 - Every line in the transcript marked as the ${otherPerson} is something they already said. Never quote those words back as if the user said them.
 - Never switch sides. If USER apologized, explained, or offered repair, the reply should react to that message as the ${otherPerson}; it should not apologize for what USER did.
+- WHOSE COMPLAINT IT IS: the ${otherPerson} opened this conversation, and their opening line is aimed AT the user. They can never answer it as though it were aimed at them, and never deny the very thing they just accused the user of.
+- When the USER denies the complaint, the ${otherPerson} does not deny it back. Denying it back is the single most common way this goes wrong: the ${otherPerson} says "I'm not X" about the very X they just accused the user of, which makes them sound like the user and swaps the two people. Whatever the ${otherPerson} accused the user of, the ${otherPerson} never says "I'm not that" or "I didn't do that" about it. They hold the complaint - press it again, give an example, say how it feels, or go colder.
 - Do not take ownership of USER's mistake. If the scenario says USER was late, distant, on the phone, forgot, changed plans, missed a deadline, or did not reply, OTHER should react to that impact instead of saying they did it.
 - Do not make the reply sound like "The Grounded Response." Save calm repair language for perfectResponse only.
 - Avoid generic reusable lines like "I just need some space right now", "can we talk about this later", "okay thanks", or "I don't know." Make the reply specific to the current issue.
@@ -2938,13 +2954,17 @@ GP-GROUNDED — COWORKER CONTEXT:
         .join("\n");
     }
 
-    function buildScenarioContextSummary(scenario) {
+    function buildScenarioContextSummary(scenario, options) {
       if (!scenario) return "";
+      // The coach note is advice for the USER. It belongs in the grading
+      // prompt and nowhere near the one that role-plays the other person -
+      // given it, the character performed the advice instead of reacting to it.
+      const forCoach = !(options && options.roleplay === true);
       const parts = [
         scenario.name ? `Scenario: ${scenario.name}` : "",
         scenario.initialText ? `Opening text, sent by the ${getPersonNoun()}: ${truncateForPrompt(scenario.initialText, 220)}` : "",
         scenario.translation ? `Original hidden meaning: ${truncateForPrompt(scenario.translation, 180)}` : "",
-        scenario.tips ? `Coach note: ${truncateForPrompt(scenario.tips, 160)}` : ""
+        (forCoach && scenario.tips) ? `Coach note: ${truncateForPrompt(scenario.tips, 160)}` : ""
       ];
       return parts.filter(Boolean).join("\n");
     }
@@ -3077,14 +3097,14 @@ ${buildPersonaGPGrounding()}
 
 ${buildPersonaReplyRules(otherPerson)}
 Return valid JSON only:
-{ "reply": "next message from the other person", "translation": "hidden emotion/need" }`;
+{ "reply": "the ${otherPerson}'s next text. It must still be THEIR complaint aimed at the user - never a denial or explanation of the thing they themselves brought up", "translation": "hidden emotion/need" }`;
 
       const systemPrompt =
 `You are roleplaying as the ${otherPerson} in a text conversation. Write only their next text message.
 ${buildPersonaProfile()}
 LAST_GRADE: ${lastGrade}
 CURRENT_HIDDEN_MEANING: ${currentTranslation}
-${buildScenarioContextSummary(activeScenario)}
+${buildScenarioContextSummary(activeScenario, { roleplay: true })}
 RECENT_TRANSCRIPT — "${selfLabel}" lines are messages YOU (the ${otherPerson}) previously sent; "USER" lines are the other person's messages. Your own prior words are in the "${selfLabel}" lines — treat them as things you actually said:
 ${buildCompactTranscript(8, { other: selfLabel, user: "USER" })}
 ${behaviorGuide}`;

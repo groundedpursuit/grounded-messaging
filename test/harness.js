@@ -129,6 +129,8 @@ const EXPORTS = `
   flags: { hardRedFlags, universalRedFlags, universalGreenFlags, invalidatingPhrases },
   get showGroundedResponse() { return showGroundedResponse; },
   setState(s) {
+    if (s.currentTranslation !== undefined) currentTranslation = s.currentTranslation;
+    if (s.chatHistory !== undefined) chatHistory = s.chatHistory;
     if (s.practicePerson !== undefined) practicePerson = s.practicePerson;
     if (s.wifePersona !== undefined) wifePersona = s.wifePersona;
     if (s.activeScenario !== undefined) activeScenario = s.activeScenario;
@@ -138,6 +140,7 @@ const EXPORTS = `
   fns: {
     analyzeResponseLocal, assessSecureBoundary, matchesFlag, polishGroundedResponse,
     escapeHtml, initScenarios, cycleScenarios, scenarioPageFor, scenarioPageCount,
+    buildReplyPrompt, buildCombinedTurnPrompt, parseGeminiJson,
     setGroundedResponse, toggleGroundedResponse,
     recordAiRep, refundAiRep, aiRepsRemaining, loadAiUsage
   }
