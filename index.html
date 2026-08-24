@@ -12,9 +12,26 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Grounded" />
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://script.google.com">
   <style>
+    /* Was 102KB of Font Awesome CSS plus its webfonts, for 21 icons. These are
+       the same 21 icons inlined as SVG. Widths come from each icon's viewBox so
+       they keep the glyph advance the font gave them. */
+    .gi { height: 1em; width: 1em; display: inline-block; vertical-align: -0.125em; fill: currentColor; flex-shrink: 0;
+          box-sizing: content-box; }  /* the font glyph sized itself and padding sat outside it; border-box would
+                                         let padding eat the icon instead of surrounding it */
+    .gi-arrow-up{width:0.7500em}
+    .gi-battery-full{width:1.1250em}
+    .gi-calendar-check{width:0.8750em}
+    .gi-check{width:0.8750em}
+    .gi-chevron-left{width:0.6250em}
+    .gi-plus{width:0.8750em}
+    .gi-quote-left{width:0.8750em}
+    .gi-signal{width:1.2500em}
+    .gi-times{width:0.7500em}
+    .gi-video{width:1.1250em}
+    .gi-wifi{width:1.2500em}
+
     :root { --app-height: 100vh; }
 
     html, body {
@@ -215,15 +232,23 @@
       }
     }
   </style>
+
+  <!-- Tailwind 3.4.17, built from this file's own classes. Replaces the 407KB
+       Play CDN, which shipped a compiler to every device to regenerate exactly
+       this stylesheet on every load. Rebuild with:
+         npx tailwindcss@3.4.17 -i in.css -o out.css --content index.html --minify
+       test/run.js fails if a class is used that has no rule here. -->
+  <style id="tw">*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.container{width:100%}@media (min-width:640px){.container{max-width:640px}}@media (min-width:768px){.container{max-width:768px}}@media (min-width:1024px){.container{max-width:1024px}}@media (min-width:1280px){.container{max-width:1280px}}@media (min-width:1536px){.container{max-width:1536px}}.invisible{visibility:hidden}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.inset-0{inset:0}.left-2{left:.5rem}.left-4{left:1rem}.right-4{right:1rem}.top-2{top:.5rem}.top-20{top:5rem}.-z-10{z-index:-10}.z-10{z-index:10}.z-20{z-index:20}.z-30{z-index:30}.z-40{z-index:40}.z-50{z-index:50}.z-\[1000\]{z-index:1000}.m-2{margin:.5rem}.m-4{margin:1rem}.my-4{margin-top:1rem;margin-bottom:1rem}.-ml-1{margin-left:-.25rem}.mb-0\.5{margin-bottom:.125rem}.mb-1{margin-bottom:.25rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.ml-1{margin-left:.25rem}.ml-3{margin-left:.75rem}.ml-4{margin-left:1rem}.mr-1{margin-right:.25rem}.mt-0{margin-top:0}.mt-1{margin-top:.25rem}.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.mt-4{margin-top:1rem}.mt-5{margin-top:1.25rem}.mt-8{margin-top:2rem}.block{display:block}.inline-block{display:inline-block}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}.hidden{display:none}.h-12{height:3rem}.h-8{height:2rem}.h-9{height:2.25rem}.h-full{height:100%}.max-h-32{max-height:8rem}.max-h-\[75vh\]{max-height:75vh}.max-h-\[85vh\]{max-height:85vh}.w-12{width:3rem}.w-16{width:4rem}.w-8{width:2rem}.w-9{width:2.25rem}.w-full{width:100%}.min-w-0{min-width:0}.max-w-\[80\%\]{max-width:80%}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}.flex-shrink-0{flex-shrink:0}.grow{flex-grow:1}.translate-x-0{--tw-translate-x:0px}.translate-x-0,.translate-x-full{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.translate-x-full{--tw-translate-x:100%}.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.cursor-not-allowed{cursor:not-allowed}.cursor-pointer{cursor:pointer}.resize-none{resize:none}.resize{resize:both}.list-inside{list-style-position:inside}.list-decimal{list-style-type:decimal}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.items-baseline{align-items:baseline}.justify-start{justify-content:flex-start}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:.25rem}.gap-1\.5{gap:.375rem}.gap-2{gap:.5rem}.gap-3{gap:.75rem}.gap-4{gap:1rem}.space-y-2>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.5rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.5rem*var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.break-words{overflow-wrap:break-word}.rounded{border-radius:.25rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.rounded-md{border-radius:.375rem}.rounded-xl{border-radius:.75rem}.rounded-r-lg{border-top-right-radius:.5rem;border-bottom-right-radius:.5rem}.rounded-tl-sm{border-top-left-radius:.125rem}.rounded-tr-sm{border-top-right-radius:.125rem}.border{border-width:1px}.border-0{border-width:0}.border-b{border-bottom-width:1px}.border-l-0{border-left-width:0}.border-l-4{border-left-width:4px}.border-t{border-top-width:1px}.border-amber-100{--tw-border-opacity:1;border-color:rgb(254 243 199/var(--tw-border-opacity,1))}.border-blue-500{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity,1))}.border-emerald-100{--tw-border-opacity:1;border-color:rgb(209 250 229/var(--tw-border-opacity,1))}.border-emerald-400{--tw-border-opacity:1;border-color:rgb(52 211 153/var(--tw-border-opacity,1))}.border-gray-100{--tw-border-opacity:1;border-color:rgb(243 244 246/var(--tw-border-opacity,1))}.border-gray-200{--tw-border-opacity:1;border-color:rgb(229 231 235/var(--tw-border-opacity,1))}.border-gray-300{--tw-border-opacity:1;border-color:rgb(209 213 219/var(--tw-border-opacity,1))}.border-green-100{--tw-border-opacity:1;border-color:rgb(220 252 231/var(--tw-border-opacity,1))}.border-indigo-400{--tw-border-opacity:1;border-color:rgb(129 140 248/var(--tw-border-opacity,1))}.bg-amber-400{--tw-bg-opacity:1;background-color:rgb(251 191 36/var(--tw-bg-opacity,1))}.bg-amber-50{--tw-bg-opacity:1;background-color:rgb(255 251 235/var(--tw-bg-opacity,1))}.bg-blue-100{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity,1))}.bg-blue-400{--tw-bg-opacity:1;background-color:rgb(96 165 250/var(--tw-bg-opacity,1))}.bg-blue-500{--tw-bg-opacity:1;background-color:rgb(59 130 246/var(--tw-bg-opacity,1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.bg-emerald-50{--tw-bg-opacity:1;background-color:rgb(236 253 245/var(--tw-bg-opacity,1))}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129/var(--tw-bg-opacity,1))}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105/var(--tw-bg-opacity,1))}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246/var(--tw-bg-opacity,1))}.bg-gray-200{--tw-bg-opacity:1;background-color:rgb(229 231 235/var(--tw-bg-opacity,1))}.bg-gray-400{--tw-bg-opacity:1;background-color:rgb(156 163 175/var(--tw-bg-opacity,1))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity,1))}.bg-green-100{--tw-bg-opacity:1;background-color:rgb(220 252 231/var(--tw-bg-opacity,1))}.bg-green-400{--tw-bg-opacity:1;background-color:rgb(74 222 128/var(--tw-bg-opacity,1))}.bg-green-50{--tw-bg-opacity:1;background-color:rgb(240 253 244/var(--tw-bg-opacity,1))}.bg-indigo-50{--tw-bg-opacity:1;background-color:rgb(238 242 255/var(--tw-bg-opacity,1))}.bg-orange-400{--tw-bg-opacity:1;background-color:rgb(251 146 60/var(--tw-bg-opacity,1))}.bg-purple-400{--tw-bg-opacity:1;background-color:rgb(192 132 252/var(--tw-bg-opacity,1))}.bg-red-100{--tw-bg-opacity:1;background-color:rgb(254 226 226/var(--tw-bg-opacity,1))}.bg-transparent{background-color:transparent}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity,1))}.bg-white\/95{background-color:hsla(0,0%,100%,.95)}.bg-yellow-100{--tw-bg-opacity:1;background-color:rgb(254 249 195/var(--tw-bg-opacity,1))}.p-2{padding:.5rem}.p-3{padding:.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.px-2{padding-left:.5rem;padding-right:.5rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-2{padding-top:.5rem;padding-bottom:.5rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-8{padding-top:2rem;padding-bottom:2rem}.pb-1{padding-bottom:.25rem}.pb-2{padding-bottom:.5rem}.pb-4{padding-bottom:1rem}.pb-8{padding-bottom:2rem}.pl-1{padding-left:.25rem}.pl-4{padding-left:1rem}.pr-2{padding-right:.5rem}.pt-1{padding-top:.25rem}.pt-3{padding-top:.75rem}.pt-4{padding-top:1rem}.pt-8{padding-top:2rem}.text-center{text-align:center}.text-2xl{font-size:1.5rem;line-height:2rem}.text-\[11px\]{font-size:11px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.italic{font-style:italic}.leading-normal{line-height:1.5}.leading-relaxed{line-height:1.625}.leading-snug{line-height:1.375}.leading-tight{line-height:1.25}.tracking-wide{letter-spacing:.025em}.tracking-widest{letter-spacing:.1em}.text-amber-500{--tw-text-opacity:1;color:rgb(245 158 11/var(--tw-text-opacity,1))}.text-amber-700{--tw-text-opacity:1;color:rgb(180 83 9/var(--tw-text-opacity,1))}.text-black{--tw-text-opacity:1;color:rgb(0 0 0/var(--tw-text-opacity,1))}.text-blue-500{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.text-blue-700{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.text-emerald-800{--tw-text-opacity:1;color:rgb(6 95 70/var(--tw-text-opacity,1))}.text-emerald-900{--tw-text-opacity:1;color:rgb(6 78 59/var(--tw-text-opacity,1))}.text-emerald-900\/70{color:rgba(6,78,59,.7)}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175/var(--tw-text-opacity,1))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128/var(--tw-text-opacity,1))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99/var(--tw-text-opacity,1))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81/var(--tw-text-opacity,1))}.text-gray-800{--tw-text-opacity:1;color:rgb(31 41 55/var(--tw-text-opacity,1))}.text-gray-900{--tw-text-opacity:1;color:rgb(17 24 39/var(--tw-text-opacity,1))}.text-green-200{--tw-text-opacity:1;color:rgb(187 247 208/var(--tw-text-opacity,1))}.text-green-500{--tw-text-opacity:1;color:rgb(34 197 94/var(--tw-text-opacity,1))}.text-green-800{--tw-text-opacity:1;color:rgb(22 101 52/var(--tw-text-opacity,1))}.text-green-900{--tw-text-opacity:1;color:rgb(20 83 45/var(--tw-text-opacity,1))}.text-indigo-800{--tw-text-opacity:1;color:rgb(55 48 163/var(--tw-text-opacity,1))}.text-indigo-900{--tw-text-opacity:1;color:rgb(49 46 129/var(--tw-text-opacity,1))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38/var(--tw-text-opacity,1))}.text-red-800{--tw-text-opacity:1;color:rgb(153 27 27/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.text-yellow-800{--tw-text-opacity:1;color:rgb(133 77 14/var(--tw-text-opacity,1))}.placeholder-gray-400::-moz-placeholder{--tw-placeholder-opacity:1;color:rgb(156 163 175/var(--tw-placeholder-opacity,1))}.placeholder-gray-400::placeholder{--tw-placeholder-opacity:1;color:rgb(156 163 175/var(--tw-placeholder-opacity,1))}.opacity-60{opacity:.6}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgba(0,0,0,.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color)}.shadow-2xl,.shadow-xl{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color),0 8px 10px -6px var(--tw-shadow-color)}.outline-none{outline:2px solid transparent;outline-offset:2px}.blur{--tw-blur:blur(8px)}.blur,.filter{filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-xl{--tw-backdrop-blur:blur(24px)}.backdrop-blur-xl,.backdrop-filter{-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.duration-300{transition-duration:.3s}.ease-in-out{transition-timing-function:cubic-bezier(.4,0,.2,1)}.hover\:bg-blue-600:hover{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.hover\:text-blue-500:hover{--tw-text-opacity:1;color:rgb(59 130 246/var(--tw-text-opacity,1))}.hover\:text-gray-600:hover{--tw-text-opacity:1;color:rgb(75 85 99/var(--tw-text-opacity,1))}.hover\:text-gray-700:hover{--tw-text-opacity:1;color:rgb(55 65 81/var(--tw-text-opacity,1))}.focus\:border-gray-400:focus{--tw-border-opacity:1;border-color:rgb(156 163 175/var(--tw-border-opacity,1))}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}.focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.focus\:ring-blue-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(59 130 246/var(--tw-ring-opacity,1))}.active\:scale-95:active{--tw-scale-x:.95;--tw-scale-y:.95;transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.active\:bg-amber-100:active{--tw-bg-opacity:1;background-color:rgb(254 243 199/var(--tw-bg-opacity,1))}.active\:bg-blue-700:active{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity,1))}.active\:bg-emerald-700:active{--tw-bg-opacity:1;background-color:rgb(4 120 87/var(--tw-bg-opacity,1))}.active\:bg-gray-100:active{--tw-bg-opacity:1;background-color:rgb(243 244 246/var(--tw-bg-opacity,1))}.active\:bg-gray-200:active{--tw-bg-opacity:1;background-color:rgb(229 231 235/var(--tw-bg-opacity,1))}.active\:bg-gray-300:active{--tw-bg-opacity:1;background-color:rgb(209 213 219/var(--tw-bg-opacity,1))}.active\:bg-gray-50:active{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity,1))}.active\:opacity-50:active{opacity:.5}.group:hover .group-hover\:bg-blue-200{--tw-bg-opacity:1;background-color:rgb(191 219 254/var(--tw-bg-opacity,1))}@media (min-width:640px){.sm\:flex{display:flex}.sm\:hidden{display:none}.sm\:pt-4{padding-top:1rem}.sm\:pt-8{padding-top:2rem}}</style>
 </head>
 
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><!-- Font Awesome Free 6.4.0 icons, CC BY 4.0 - https://fontawesome.com/license/free --><symbol id="i-arrow-up" viewBox="0 0 384 512"><path d="M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"/></symbol><symbol id="i-battery-full" viewBox="0 0 576 512"><path d="M464 160c8.8 0 16 7.2 16 16V336c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V176c0-8.8 7.2-16 16-16H464zM80 96C35.8 96 0 131.8 0 176V336c0 44.2 35.8 80 80 80H464c44.2 0 80-35.8 80-80V320c17.7 0 32-14.3 32-32V224c0-17.7-14.3-32-32-32V176c0-44.2-35.8-80-80-80H80zm368 96H96V320H448V192z"/></symbol><symbol id="i-calendar-check" viewBox="0 0 448 512"><path d="M128 0c17.7 0 32 14.3 32 32V64H288V32c0-17.7 14.3-32 32-32s32 14.3 32 32V64h48c26.5 0 48 21.5 48 48v48H0V112C0 85.5 21.5 64 48 64H96V32c0-17.7 14.3-32 32-32zM0 192H448V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V192zM329 305c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-95 95-47-47c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l64 64c9.4 9.4 24.6 9.4 33.9 0L329 305z"/></symbol><symbol id="i-check-circle" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></symbol><symbol id="i-check" viewBox="0 0 448 512"><path d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></symbol><symbol id="i-chevron-left" viewBox="0 0 320 512"><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l192 192c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256 246.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192z"/></symbol><symbol id="i-cog" viewBox="0 0 512 512"><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></symbol><symbol id="i-copy" viewBox="0 0 512 512"><path d="M272 0H396.1c12.7 0 24.9 5.1 33.9 14.1l67.9 67.9c9 9 14.1 21.2 14.1 33.9V336c0 26.5-21.5 48-48 48H272c-26.5 0-48-21.5-48-48V48c0-26.5 21.5-48 48-48zM48 128H192v64H64V448H256V416h64v48c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V176c0-26.5 21.5-48 48-48z"/></symbol><symbol id="i-edit" viewBox="0 0 512 512"><path d="M441 58.9L453.1 71c9.4 9.4 9.4 24.6 0 33.9L424 134.1 377.9 88 407 58.9c9.4-9.4 24.6-9.4 33.9 0zM209.8 256.2L344 121.9 390.1 168 255.8 302.2c-2.9 2.9-6.5 5-10.4 6.1l-58.5 16.7 16.7-58.5c1.1-3.9 3.2-7.5 6.1-10.4zM373.1 25L175.8 222.2c-8.7 8.7-15 19.4-18.3 31.1l-28.6 100c-2.4 8.4-.1 17.4 6.1 23.6s15.2 8.5 23.6 6.1l100-28.6c11.8-3.4 22.5-9.7 31.1-18.3L487 138.9c28.1-28.1 28.1-73.7 0-101.8L474.9 25C446.8-3.1 401.2-3.1 373.1 25zM88 64C39.4 64 0 103.4 0 152V424c0 48.6 39.4 88 88 88H360c48.6 0 88-39.4 88-88V312c0-13.3-10.7-24-24-24s-24 10.7-24 24V424c0 22.1-17.9 40-40 40H88c-22.1 0-40-17.9-40-40V152c0-22.1 17.9-40 40-40H200c13.3 0 24-10.7 24-24s-10.7-24-24-24H88z"/></symbol><symbol id="i-heart-crack" viewBox="0 0 512 512"><path d="M119.4 44.1c23.3-3.9 46.8-1.9 68.6 5.3l49.8 77.5-75.4 75.4c-1.5 1.5-2.4 3.6-2.3 5.8s1 4.2 2.6 5.7l112 104c2.9 2.7 7.4 2.9 10.5 .3s3.8-7 1.7-10.4l-60.4-98.1 90.7-75.6c2.6-2.1 3.5-5.7 2.4-8.8L296.8 61.8c28.5-16.7 62.4-23.2 95.7-17.6C461.5 55.6 512 115.2 512 185.1v5.8c0 41.5-17.2 81.2-47.6 109.5L283.7 469.1c-7.5 7-17.4 10.9-27.7 10.9s-20.2-3.9-27.7-10.9L47.6 300.4C17.2 272.1 0 232.4 0 190.9v-5.8c0-69.9 50.5-129.5 119.4-141z"/></symbol><symbol id="i-heart" viewBox="0 0 512 512"><path d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"/></symbol><symbol id="i-plus-circle" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM232 344V280H168c-13.3 0-24-10.7-24-24s10.7-24 24-24h64V168c0-13.3 10.7-24 24-24s24 10.7 24 24v64h64c13.3 0 24 10.7 24 24s-10.7 24-24 24H280v64c0 13.3-10.7 24-24 24s-24-10.7-24-24z"/></symbol><symbol id="i-plus" viewBox="0 0 448 512"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></symbol><symbol id="i-question-circle" viewBox="0 0 512 512"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm169.8-90.7c7.9-22.3 29.1-37.3 52.8-37.3h58.3c34.9 0 63.1 28.3 63.1 63.1c0 22.6-12.1 43.5-31.7 54.8L280 264.4c-.2 13-10.9 23.6-24 23.6c-13.3 0-24-10.7-24-24V250.5c0-8.6 4.6-16.5 12.1-20.8l44.3-25.4c4.7-2.7 7.6-7.7 7.6-13.1c0-8.4-6.8-15.1-15.1-15.1H222.6c-3.4 0-6.4 2.1-7.5 5.3l-.4 1.2c-4.4 12.5-18.2 19-30.6 14.6s-19-18.2-14.6-30.6l.4-1.2zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/></symbol><symbol id="i-quote-left" viewBox="0 0 448 512"><path d="M0 216C0 149.7 53.7 96 120 96h8c17.7 0 32 14.3 32 32s-14.3 32-32 32h-8c-30.9 0-56 25.1-56 56v8h64c35.3 0 64 28.7 64 64v64c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V320 288 216zm256 0c0-66.3 53.7-120 120-120h8c17.7 0 32 14.3 32 32s-14.3 32-32 32h-8c-30.9 0-56 25.1-56 56v8h64c35.3 0 64 28.7 64 64v64c0 35.3-28.7 64-64 64H320c-35.3 0-64-28.7-64-64V320 288 216z"/></symbol><symbol id="i-search" viewBox="0 0 512 512"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></symbol><symbol id="i-signal" viewBox="0 0 640 512"><path d="M576 0c17.7 0 32 14.3 32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V32c0-17.7 14.3-32 32-32zM448 96c17.7 0 32 14.3 32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V128c0-17.7 14.3-32 32-32zM352 224V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V224c0-17.7 14.3-32 32-32s32 14.3 32 32zM192 288c17.7 0 32 14.3 32 32V480c0 17.7-14.3 32-32 32s-32-14.3-32-32V320c0-17.7 14.3-32 32-32zM96 416v64c0 17.7-14.3 32-32 32s-32-14.3-32-32V416c0-17.7 14.3-32 32-32s32 14.3 32 32z"/></symbol><symbol id="i-sync-alt" viewBox="0 0 512 512"><path d="M105.1 202.6c7.7-21.8 20.2-42.3 37.8-59.8c62.5-62.5 163.8-62.5 226.3 0L386.3 160H336c-17.7 0-32 14.3-32 32s14.3 32 32 32H463.5c0 0 0 0 0 0h.4c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32s-32 14.3-32 32v51.2L414.4 97.6c-87.5-87.5-229.3-87.5-316.8 0C73.2 122 55.6 150.7 44.8 181.4c-5.9 16.7 2.9 34.9 19.5 40.8s34.9-2.9 40.8-19.5zM39 289.3c-5 1.5-9.8 4.2-13.7 8.2c-4 4-6.7 8.8-8.1 14c-.3 1.2-.6 2.5-.8 3.8c-.3 1.7-.4 3.4-.4 5.1V448c0 17.7 14.3 32 32 32s32-14.3 32-32V396.9l17.6 17.5 0 0c87.5 87.4 229.3 87.4 316.7 0c24.4-24.4 42.1-53.1 52.9-83.7c5.9-16.7-2.9-34.9-19.5-40.8s-34.9 2.9-40.8 19.5c-7.7 21.8-20.2 42.3-37.8 59.8c-62.5 62.5-163.8 62.5-226.3 0l-.1-.1L125.6 352H176c17.7 0 32-14.3 32-32s-14.3-32-32-32H48.4c-1.6 0-3.2 .1-4.8 .3s-3.1 .5-4.6 1z"/></symbol><symbol id="i-times" viewBox="0 0 384 512"><path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></symbol><symbol id="i-video" viewBox="0 0 576 512"><path d="M0 128C0 92.7 28.7 64 64 64H320c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128zM559.1 99.8c10.4 5.6 16.9 16.4 16.9 28.2V384c0 11.8-6.5 22.6-16.9 28.2s-23 5-32.9-1.6l-96-64L416 337.1V320 192 174.9l14.2-9.5 96-64c9.8-6.5 22.4-7.2 32.9-1.6z"/></symbol><symbol id="i-wifi" viewBox="0 0 640 512"><path d="M54.2 202.9C123.2 136.7 216.8 96 320 96s196.8 40.7 265.8 106.9c12.8 12.2 33 11.8 45.2-.9s11.8-33-.9-45.2C549.7 79.5 440.4 32 320 32S90.3 79.5 9.8 156.7C-2.9 169-3.3 189.2 8.9 202s32.5 13.2 45.2 .9zM320 256c56.8 0 108.6 21.1 148.2 56c13.3 11.7 33.5 10.4 45.2-2.8s10.4-33.5-2.8-45.2C459.8 219.2 393 192 320 192s-139.8 27.2-190.5 72c-13.3 11.7-14.5 31.9-2.8 45.2s31.9 14.5 45.2 2.8c39.5-34.9 91.3-56 148.2-56zm64 160a64 64 0 1 0 -128 0 64 64 0 1 0 128 0z"/></symbol></svg>
   <div class="app-shell bg-white">
 
     <div class="hidden sm:flex h-12 bg-white w-full justify-between items-end px-6 pb-2 z-20 text-xs font-medium relative border-b border-gray-100">
       <div class="notch"></div>
       <span>9:41</span>
-      <div class="flex gap-1.5"><i class="fas fa-signal"></i><i class="fas fa-wifi"></i><i class="fas fa-battery-full"></i></div>
+      <div class="flex gap-1.5"><svg class="gi gi-signal" aria-hidden="true"><use href="#i-signal"></use></svg><svg class="gi gi-wifi" aria-hidden="true"><use href="#i-wifi"></use></svg><svg class="gi gi-battery-full" aria-hidden="true"><use href="#i-battery-full"></use></svg></div>
     </div>
     <div class="sm:hidden h-safe-top w-full bg-white"></div>
 
@@ -231,29 +256,29 @@
       <div class="ios-toolbar p-4 flex justify-between items-center pt-8 sm:pt-4">
         <div class="flex items-center gap-1">
           <button onclick="openSettings()" class="text-gray-400 hover:text-gray-600 p-2" aria-label="Settings">
-            <i class="fas fa-cog text-xl"></i>
+            <svg class="gi gi-cog text-xl" aria-hidden="true"><use href="#i-cog"></use></svg>
           </button>
           <button onclick="openHelp(true)" class="text-gray-400 hover:text-gray-600 p-2" aria-label="Help">
-            <i class="far fa-question-circle text-xl"></i>
+            <svg class="gi gi-question-circle text-xl" aria-hidden="true"><use href="#i-question-circle"></use></svg>
           </button>
         </div>
 
         <div class="flex items-center gap-2">
           <h1 class="ios-toolbar-title">Messages</h1>
           <button onclick="initScenarios()" class="text-gray-400 hover:text-blue-500 transition-colors pt-1" aria-label="Refresh scenarios">
-            <i class="fas fa-sync-alt"></i>
+            <svg class="gi gi-sync-alt" aria-hidden="true"><use href="#i-sync-alt"></use></svg>
           </button>
         </div>
 
         <button onclick="openCustomScenarioModal()" class="text-blue-500 text-2xl p-2" aria-label="New simulation">
-          <i class="far fa-edit"></i>
+          <svg class="gi gi-edit" aria-hidden="true"><use href="#i-edit"></use></svg>
         </button>
       </div>
 
       <div class="flex-1 overflow-y-auto mobile-scroll">
         <div class="px-4 py-2">
           <label class="ios-search p-2 flex items-center gap-2">
-            <i class="fas fa-search text-sm ml-1"></i>
+            <svg class="gi gi-search text-sm ml-1" aria-hidden="true"><use href="#i-search"></use></svg>
             <input id="scenario-search" type="search" inputmode="search" autocomplete="off"
                    placeholder="Search scenarios" aria-label="Search scenarios"
                    oninput="initScenarios()"
@@ -263,7 +288,7 @@
 
         <!-- NEW SIMULATION -->
         <div onclick="openCustomScenarioModal()" class="flex items-center px-4 py-3 active:bg-gray-100 cursor-pointer border-b border-gray-100 ml-4 border-l-0 group">
-          <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg flex-shrink-0 group-hover:bg-blue-200 transition-colors"><i class="fas fa-plus"></i></div>
+          <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg flex-shrink-0 group-hover:bg-blue-200 transition-colors"><svg class="gi gi-plus" aria-hidden="true"><use href="#i-plus"></use></svg></div>
           <div class="ml-3 flex-1 min-w-0">
             <div class="flex justify-between items-baseline mb-0.5">
               <h3 class="font-semibold text-base truncate text-blue-600">New Simulation</h3>
@@ -285,13 +310,13 @@
     <div id="chat-view" class="absolute inset-0 bg-white z-30 transform translate-x-full transition-transform duration-300 flex flex-col w-full h-full">
       <div class="ios-chat-header pt-8 sm:pt-8 pb-2 px-2 flex items-center justify-between z-10 flex-shrink-0">
         <button onclick="goBack()" class="flex items-center text-blue-500 px-2 py-2 -ml-1 active:opacity-50">
-          <i class="fas fa-chevron-left text-xl mr-1"></i><span class="text-lg">Messages</span>
+          <svg class="gi gi-chevron-left text-xl mr-1" aria-hidden="true"><use href="#i-chevron-left"></use></svg><span class="text-lg">Messages</span>
         </button>
         <div class="flex flex-col items-center">
           <div id="contact-avatar" class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold mb-0.5">W</div>
           <span id="contact-label" class="text-xs font-medium text-black">Wife ❤️</span>
         </div>
-        <div class="w-16 flex justify-end pr-2"><i class="fas fa-video text-blue-500 text-lg p-2"></i></div>
+        <div class="w-16 flex justify-end pr-2"><svg class="gi gi-video text-blue-500 text-lg p-2" aria-hidden="true"><use href="#i-video"></use></svg></div>
       </div>
 
       <div id="messages-container" class="flex-1 bg-white p-4 overflow-y-auto mobile-scroll no-scrollbar flex flex-col gap-2"></div>
@@ -304,7 +329,7 @@
       <div id="feedback-overlay" class="hidden absolute top-20 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200 p-5 z-40 fade-in m-2 flex flex-col max-h-[75vh]">
         <div class="flex justify-between items-start mb-2 flex-shrink-0">
           <h3 id="feedback-title" class="text-xl font-bold">Analysis</h3>
-          <button onclick="closeFeedback()" class="text-gray-400 hover:text-gray-600 p-2"><i class="fas fa-times"></i></button>
+          <button onclick="closeFeedback()" class="text-gray-400 hover:text-gray-600 p-2"><svg class="gi gi-times" aria-hidden="true"><use href="#i-times"></use></svg></button>
         </div>
 
         <div class="overflow-y-auto mobile-scroll flex-1 pr-2">
@@ -318,7 +343,7 @@
 
           <div class="bg-indigo-50 border-l-4 border-indigo-400 p-3 rounded-r-lg mb-4">
             <span class="text-xs font-bold text-indigo-800 uppercase tracking-widest block mb-1">
-              <i class="fas fa-heart-crack mr-1"></i> Emotion Decoder
+              <svg class="gi gi-heart-crack mr-1" aria-hidden="true"><use href="#i-heart-crack"></use></svg> Emotion Decoder
             </span>
             <p id="feedback-translation" class="text-indigo-900 text-sm italic font-medium leading-normal"></p>
           </div>
@@ -330,13 +355,13 @@
               <button id="copy-perfect-btn"
                       onclick="copyPerfectResponse()"
                       class="text-xs font-semibold text-gray-500 hover:text-gray-700 px-2 py-1 rounded-md border border-gray-200 active:bg-gray-100 flex items-center gap-1">
-                <i id="copy-perfect-icon" class="fas fa-copy"></i>
+                <svg class="gi gi-copy" id="copy-perfect-icon" aria-hidden="true"><use href="#i-copy"></use></svg>
                 <span id="copy-perfect-label">Copy</span>
               </button>
             </div>
 
             <div class="bg-green-50 p-3 rounded-lg border border-green-100 text-green-900 text-sm italic relative">
-              <i class="fas fa-quote-left absolute top-2 left-2 text-green-200 text-xl -z-10"></i>
+              <svg class="gi gi-quote-left absolute top-2 left-2 text-green-200 text-xl -z-10" aria-hidden="true"><use href="#i-quote-left"></use></svg>
               <span id="feedback-perfect"></span>
             </div>
 
@@ -351,12 +376,12 @@
       </div>
 
       <div id="composer-bar" class="p-3 flex items-end gap-3 pb-4 safe-area-bottom w-full z-20 flex-shrink-0">
-        <div id="composer-plus" class="text-2xl pb-1 pl-1"><i class="fas fa-plus-circle"></i></div>
+        <div id="composer-plus" class="text-2xl pb-1 pl-1"><svg class="gi gi-plus-circle" aria-hidden="true"><use href="#i-plus-circle"></use></svg></div>
         <div class="flex-1 relative">
           <textarea id="message-input" rows="1" enterkeyhint="send" autocapitalize="sentences" autocorrect="on" spellcheck="true" class="w-full border border-gray-300 rounded-2xl py-2 px-4 text-base focus:outline-none focus:border-gray-400 resize-none max-h-32" placeholder="iMessage"></textarea>
         </div>
         <button id="send-btn" onclick="handleUserSend()" class="text-white rounded-full w-9 h-9 flex items-center justify-center mb-0.5 hover:bg-blue-600 transition-colors flex-shrink-0 active:scale-95">
-          <i class="fas fa-arrow-up text-sm font-bold"></i>
+          <svg class="gi gi-arrow-up text-sm font-bold" aria-hidden="true"><use href="#i-arrow-up"></use></svg>
         </button>
       </div>
     </div>
@@ -380,7 +405,7 @@
     <div id="selfdecode-view" class="absolute inset-0 bg-white z-30 transform translate-x-full transition-transform duration-300 flex flex-col w-full h-full">
       <div class="ios-chat-header pt-8 sm:pt-8 pb-2 px-2 flex items-center justify-between z-10 flex-shrink-0">
         <button onclick="closeSelfDecodeView()" class="flex items-center text-blue-500 px-2 py-2 -ml-1 active:opacity-50">
-          <i class="fas fa-chevron-left text-xl mr-1"></i><span class="text-lg">Back</span>
+          <svg class="gi gi-chevron-left text-xl mr-1" aria-hidden="true"><use href="#i-chevron-left"></use></svg><span class="text-lg">Back</span>
         </button>
         <div class="text-center flex-1">
           <p class="font-semibold text-base leading-tight">Self Decode</p>
@@ -400,7 +425,7 @@
             placeholder="Type what you want to say…"></textarea>
         </div>
         <button onclick="submitSelfDecodeView()" class="bg-emerald-500 text-white rounded-full w-9 h-9 flex items-center justify-center mb-0.5 active:scale-95 flex-shrink-0">
-          <i class="fas fa-arrow-up text-sm font-bold"></i>
+          <svg class="gi gi-arrow-up text-sm font-bold" aria-hidden="true"><use href="#i-arrow-up"></use></svg>
         </button>
       </div>
     </div>
@@ -466,7 +491,7 @@
         <div class="flex items-start justify-between mb-2">
           <h2 class="text-xl font-bold">Quick Help</h2>
           <button onclick="closeHelp()" class="text-gray-400 hover:text-gray-600 p-2" aria-label="Close help">
-            <i class="fas fa-times"></i>
+            <svg class="gi gi-times" aria-hidden="true"><use href="#i-times"></use></svg>
           </button>
         </div>
 
@@ -498,7 +523,7 @@
         <div class="flex items-start justify-between mb-2">
           <h2 id="allwon-title" class="text-xl font-bold">You cleared this category ✅</h2>
           <button onclick="closeAllWonModal()" class="text-gray-400 hover:text-gray-600 p-2" aria-label="Close">
-            <i class="fas fa-times"></i>
+            <svg class="gi gi-times" aria-hidden="true"><use href="#i-times"></use></svg>
           </button>
         </div>
 
@@ -513,7 +538,7 @@
           <a href="https://foundationcall.netlify.app/"
              target="_blank" rel="noopener"
              class="inline-flex items-center gap-2 mt-3 w-full justify-center py-3 bg-emerald-600 text-white rounded-lg font-semibold active:bg-emerald-700">
-            <i class="fas fa-calendar-check"></i>
+            <svg class="gi gi-calendar-check" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
             Schedule a call
           </a>
 
@@ -2176,6 +2201,20 @@ ${banLine}`.replace(/\n\n+/g, '\n');
       return truncateForPrompt((scenario && scenario.initialText) || "", 90);
     }
 
+    // Icons are inline SVG referencing a sprite, so swapping one means pointing
+    // its <use> at a different symbol rather than rewriting a class name.
+    function iconName(el) {
+      const use = el && el.querySelector('use');
+      const href = use && (use.getAttribute('href') || use.getAttribute('xlink:href'));
+      return href ? href.replace('#i-', '') : '';
+    }
+    function setIcon(el, name) {
+      const use = el && el.querySelector('use');
+      if (!use) return;
+      use.setAttribute('href', '#i-' + name);
+      el.className.baseVal = String(el.className.baseVal || '').replace(/\bgi-[a-z0-9-]+/, 'gi-' + name);
+    }
+
     function escapeHtml(text) {
       return String(text || "")
         .replace(/&/g, "&amp;")
@@ -2222,7 +2261,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
                <h3 class="font-semibold text-base truncate text-amber-700">Daily Challenge</h3>
                <div class="flex items-center gap-2">
                  <span class="text-amber-500 text-sm font-medium">Today</span>
-                 ${dailyDone ? `<i class="fas fa-check-circle text-green-500 text-sm" title="Completed"></i>` : ``}
+                 ${dailyDone ? `<svg class="gi gi-check-circle text-green-500 text-sm" title="Completed" aria-hidden="true"><use href="#i-check-circle"></use></svg>` : ``}
                </div>
              </div>
              <p class="text-gray-500 text-sm truncate leading-snug">${escapeHtml(previewText(daily))}</p>
@@ -2264,7 +2303,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
                <h3 class="font-semibold text-base truncate ${done ? 'text-gray-400' : ''}">${escapeHtml(title)}</h3>
                <div class="flex items-center gap-2 flex-shrink-0">
                  <span class="text-gray-400 text-sm">${escapeHtml(scen.timestamp || '')}</span>
-                 ${done ? `<i class="fas fa-check-circle text-green-500 text-sm" title="Completed"></i>` : ``}
+                 ${done ? `<svg class="gi gi-check-circle text-green-500 text-sm" title="Completed" aria-hidden="true"><use href="#i-check-circle"></use></svg>` : ``}
                </div>
              </div>
              <p class="text-gray-500 text-sm truncate leading-snug">${escapeHtml(previewText(scen))}</p>
@@ -2449,6 +2488,7 @@ Return JSON ONLY:
       lastReplyText = "";
       lastGrade = null;
       aiTurnRequestId += 1;
+      pendingReply = null;
       hideTypingIndicator();
 
       // reset win/strike progress for this scenario
@@ -2945,6 +2985,12 @@ Return valid JSON ONLY:
           polishGroundedResponse(json.perfectResponse || scenario.perfectResponse),
           json.translation || currentTranslation
         );
+
+        // Continue is the only way forward from here, unless this turn won the
+        // scenario or locked it out - in which case there is no reply to fetch.
+        if (!pendingWin && !scenarioWon && !overlayLocked && requestId === aiTurnRequestId) {
+          prefetchReply(requestId);
+        }
       } catch (e) {
         console.warn("API Fail", e);
         refundAiRep();
@@ -2956,7 +3002,7 @@ Return valid JSON ONLY:
     // Takes the turn id the same way analyzeWithGemini does. Without it a reply
     // generated for one scenario landed in whichever scenario was open when it
     // came back, and went into chatHistory as if the other person had said it.
-    async function generateReplyWithGemini(requestId) {
+    function buildReplyPrompt() {
       const otherPerson = getPersonNoun();
       const selfLabel = otherPerson.toUpperCase() + " (you)";
 
@@ -3004,11 +3050,39 @@ RECENT_TRANSCRIPT — "${selfLabel}" lines are messages YOU (the ${otherPerson})
 ${buildCompactTranscript(8, { other: selfLabel, user: "USER" })}
 ${behaviorGuide}`;
 
-      try {
-        const response = await callGemini(systemPrompt, { tier: "fast" });
-        if (requestId !== aiTurnRequestId) return;
+      return systemPrompt;
+    }
 
-        const json = parseGeminiJson(response);
+    // Her reply used to start downloading only when Continue was pressed, so
+    // every turn cost two waits back to back. It is fetched while the user is
+    // still reading their feedback instead, which is dead time either way.
+    let pendingReply = null;
+
+    function requestReply() {
+      return callGemini(buildReplyPrompt(), { tier: "fast" }).then(parseGeminiJson);
+    }
+
+    function prefetchReply(requestId) {
+      pendingReply = null;
+      if (!aiAvailable()) return;
+      const promise = requestReply();
+      promise.catch(function () {});   // the user may never press Continue
+      pendingReply = { requestId: requestId, promise: promise };
+    }
+
+    function claimReply(requestId) {
+      // Only a prefetch for THIS turn counts. Editing or backing out bumps the
+      // turn id, and its reply was written against a conversation that no
+      // longer exists.
+      const hit = (pendingReply && pendingReply.requestId === requestId) ? pendingReply.promise : null;
+      pendingReply = null;
+      return hit || requestReply();
+    }
+
+    async function generateReplyWithGemini(requestId) {
+      try {
+        const json = await claimReply(requestId);
+        if (requestId !== aiTurnRequestId) return;
         const replyText = json.reply || "…";
         currentTranslation = json.translation || currentTranslation;
 
@@ -3261,6 +3335,7 @@ Return JSON ONLY:
       // Invalidate any in-flight AI turn AND clear the dots it was going to
       // land under, or they keep animating on the next scenario you open.
       aiTurnRequestId += 1;
+      pendingReply = null;
       hideTypingIndicator();
       document.getElementById('chat-view').classList.add('translate-x-full');
       document.getElementById('feedback-overlay').classList.add('hidden');
@@ -3395,7 +3470,13 @@ Return JSON ONLY:
       showTypingIndicator();
       scrollToBottom();
 
+      // Continuing starts a new turn, and the reply prefetched during the last
+      // one belongs to it - carry it across the bump or it is thrown away and
+      // refetched, which is the whole wait this was meant to remove.
+      const previousTurn = aiTurnRequestId;
       const requestId = nextAITurnRequestId();
+      if (pendingReply && pendingReply.requestId === previousTurn) pendingReply.requestId = requestId;
+
       if (aiAvailable()) generateReplyWithGemini(requestId);
       else fallbackReply(requestId);
     }
@@ -3568,11 +3649,11 @@ Return JSON ONLY:
       thread.insertAdjacentHTML('beforeend', `
         <div class="flex flex-col gap-2">
           <div class="bg-emerald-50 border-l-4 border-emerald-400 p-3 rounded-r-lg text-sm">
-            <span class="text-xs font-bold text-emerald-800 uppercase tracking-widest block mb-1"><i class="fas fa-heart mr-1"></i> Emotion</span>
+            <span class="text-xs font-bold text-emerald-800 uppercase tracking-widest block mb-1"><svg class="gi gi-heart mr-1" aria-hidden="true"><use href="#i-heart"></use></svg> Emotion</span>
             <p class="text-emerald-900 italic font-medium leading-normal">"${escapeHtml(emotion)}"</p>
           </div>
           <div class="bg-green-50 border border-green-100 p-3 rounded-lg text-sm text-green-900 italic relative">
-            <i class="fas fa-quote-left absolute top-2 left-2 text-green-200 text-xl -z-10"></i>
+            <svg class="gi gi-quote-left absolute top-2 left-2 text-green-200 text-xl -z-10" aria-hidden="true"><use href="#i-quote-left"></use></svg>
             <span>${escapeHtml(rewrite)}</span>
           </div>
         </div>
@@ -3689,19 +3770,19 @@ Return JSON ONLY:
       const hint = document.getElementById('copy-perfect-hint');
 
       const originalLabel = label ? label.innerText : "Copy";
-      const originalIconClass = icon ? icon.className : "";
+      const originalIconName = iconName(icon) || "copy";
 
       try {
         await copyToClipboard(text);
 
         if (label) label.innerText = "Copied";
-        if (icon) icon.className = "fas fa-check";
+        if (icon) setIcon(icon, "check");
         if (hint) hint.classList.remove('hidden');
         if (btn) btn.classList.add("bg-gray-50");
 
         setTimeout(() => {
           if (label) label.innerText = originalLabel;
-          if (icon) icon.className = originalIconClass || "fas fa-copy";
+          if (icon) setIcon(icon, originalIconName);
           if (hint) hint.classList.add('hidden');
           if (btn) btn.classList.remove("bg-gray-50");
         }, 1200);
