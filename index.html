@@ -758,9 +758,12 @@ Sound like Phil Merrell at Grounded Pursuit: calm, steady, warm, practical, and 
 Write like a real text message, not a therapy worksheet.
 Use 1-2 short sentences (about 18-34 words total).
 Lead with reflection, and add one ownership line when the user actually did something. How the message ENDS is assigned per turn below - do not default to proposing a conversation.
+Grounded is not the same as sorry. A grounded man can hold a limit, disagree, or say what he needs, and still be warm about it. Warmth AND a spine - never warmth instead of one.
+Never write "I hear that you feel...", "I hear you saying...", "Sounds like you're feeling..." or "That must feel...". Reflect what they mean in plain words instead.
 Sound like an actual man texting. Contractions are good. Sentence fragments are good. A one-word gut reaction is good when the moment is hot.
 Vary how you open every single time. Never lean on one stock phrase. "I hear you" is allowed once in a while, never as a default.
-Avoid robotic or clinical language like: "validate", "dynamics", "emotional regulation", "attachment", "nervous system", "underlying process".`;
+Avoid robotic or clinical language like: "validate", "dynamics", "emotional regulation", "attachment", "nervous system", "underlying process".
+Never leave a placeholder in the text - no "X, Y and Z", no [brackets], no "the specific thing". Name something real from this conversation or leave it out.`;
     }
 
     // ============================
@@ -770,13 +773,14 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
     // openers used in the last few turns are banned outright.
     // ============================
     const openerRegisters = {
-      reflect: { label: "reflect their words back", examples: ["It sounds like...", "Sounds like...", "So you're saying...", "What I'm hearing is..."] },
+      reflect: { label: "say back what they actually mean, in your own words, the way a man says it", examples: ["So it landed like I don't care.", "You've been carrying this on your own.", "That's been eating at you a while.", "Okay - you're saying I checked out on you."] },
       imagine: { label: "picture what it was like for them", examples: ["I can imagine...", "I get why...", "I can see why...", "That has to..."] },
       gut:     { label: "a short, real gut reaction first, then the substance", examples: ["Whoa.", "Ouch.", "Oof.", "Man.", "Okay, that landed."] },
       own:     { label: "take ownership immediately, no empathy preamble", examples: ["You're right.", "That's on me.", "Yeah, I dropped that.", "Fair."] },
-      agree:   { label: "plain agreement", examples: ["That makes sense.", "That's fair.", "Yeah.", "I hear you."] },
+      agree:   { label: "plain agreement", examples: ["That makes sense.", "That's fair.", "Yeah.", "You're not wrong."] },
       direct:  { label: "no opener at all, start straight into the real content the way a normal text does", examples: ["(skip the acknowledgement line entirely)"] },
-      work:    { label: "workplace-appropriate acknowledgement", examples: ["Got it.", "Fair point.", "Understood.", "Thanks for flagging that."] }
+      work:    { label: "workplace-appropriate acknowledgement", examples: ["Got it.", "Fair point.", "Understood.", "Thanks for flagging that."] },
+      stand:   { label: "say what is true for you first, warmly, without conceding something you did not do", examples: ["That's not how I remember it.", "I did do it, and I get that it still felt like I didn't.", "I'm not going to say I did something I didn't.", "I see it differently, but I hear it landed hard."] }
     };
 
     let recentOpenerRegisters = [];
@@ -819,10 +823,55 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
       return (activeScenario && activeScenario.initialText) || '';
     }
 
-    function pickOpenerRegister(scenario) {
+    // Phil: the app feels "simpy". Measured, he was right - 62% of the scripted
+    // answers and 56% of the live ones apologized or agreed without ever saying
+    // what the user himself wanted, including when the user had just disputed
+    // the facts or asked for twenty minutes. The registers that only concede
+    // are taken off the table in exactly those two situations.
+    function readUserStance(userText) {
+      const text = String(userText || "").toLowerCase().replace(/[‘’]/g, "'").replace(/\s+/g, " ").trim();
+      if (!text) return { disputes: false, limit: false };
+      const disputes = /\b(i did (do|say|tell|text|call|send)|i didn'?t|i never (said|did|told)|that'?s not (true|what|how|fair)|not what i said|you'?re (not remembering|misremembering|wrong)|no i'?m not|no i did)\b/.test(text);
+      const dismisses = /\b(whatever|here we go again|you always find|typical|forget it|never mind|nevermind|calm down|you'?re overreacting|drop it)\b/.test(text);
+      const limit = /\b(i need (a minute|a moment|some time|a break|space)|give me (a minute|a moment|some time|\d+)|i'?m (too |really |so )?(flooded|overwhelmed|heated|worked up)|i can'?t do this right now|not (doing this )?over text|i'?ll come back|come back to (this|it))\b/.test(text);
+      return { disputes: disputes, limit: limit, dismisses: dismisses };
+    }
+
+    // A named, per-turn instruction beats one more line in a list of rules: the
+    // model reads this one because it is about the message it just read.
+    function buildStanceInstruction(userText) {
+      const stance = readUserStance(userText === undefined ? lastUserMessage() : userText);
+      const other = getPersonNoun();
+      const lines = [];
+      if (stance.disputes) {
+        lines.push("- He just disputed what happened. The Grounded Response does NOT agree that he did it and does NOT apologize for it. It can say how it landed for the " + other + ", give his side once, plainly, and stop - no arguing it twice, no folding.");
+      }
+      if (stance.limit) {
+        lines.push("- He just asked for a pause or named a limit. That limit STAYS in the answer, with whatever return time he gave. Do not replace it with being available right now.");
+      }
+      if (stance.dismisses) {
+        lines.push("- He just brushed the " + other + " off. The Grounded Response is the honest version of what he was feeling, not an apology he does not owe: name his own state plainly (annoyed, defensive, tired of this one), stay respectful, and give the " + other + " something real to answer. Do not have him grovel to end it.");
+      }
+      if (!lines.length) return "";
+      return "WHAT THE USER JUST DID (this drives the answer):\n" + lines.join("\n");
+    }
+
+    function lastUserMessage() {
+      for (let i = chatHistory.length - 1; i >= 0; i--) {
+        const m = chatHistory[i];
+        if (m && m.role === 'user' && m.text && !/^Context:/i.test(String(m.text))) return m.text;
+      }
+      return '';
+    }
+
+    function pickOpenerRegister(scenario, userText) {
       const hot = messageRunsHot(lastOtherMessage());
+      const stance = readUserStance(userText === undefined ? lastUserMessage() : userText);
       let pool;
-      if (practicePerson === 'coworker') pool = ['work', 'own', 'reflect', 'direct', 'agree'];
+      if (stance.disputes) pool = ['stand', 'direct', 'imagine', 'reflect'];
+      else if (stance.dismisses) pool = ['direct', 'gut', 'stand', 'reflect'];
+      else if (stance.limit) pool = ['direct', 'imagine', 'agree', 'reflect'];
+      else if (practicePerson === 'coworker') pool = ['work', 'own', 'reflect', 'direct', 'agree'];
       else if (hot) pool = ['gut', 'own', 'reflect', 'imagine', 'direct', 'agree'];
       else pool = ['reflect', 'imagine', 'direct', 'agree', 'own'];
 
@@ -838,8 +887,8 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
       return key;
     }
 
-    function buildOpenerInstruction(scenario) {
-      const key = pickOpenerRegister(scenario);
+    function buildOpenerInstruction(scenario, userText) {
+      const key = pickOpenerRegister(scenario, userText);
       const reg = openerRegisters[key] || openerRegisters.reflect;
       const seed = hashSeed('open-ex|' + String((scenario && scenario.id) || 'custom') + '|' + aiTurnRequestId);
       const examples = rotateExamples(reg.examples, seed);
@@ -851,7 +900,7 @@ Avoid robotic or clinical language like: "validate", "dynamics", "emotional regu
       return `OPENING STYLE FOR THIS TURN (required):
 Open The Grounded Response in this register: ${reg.label}.
 Examples of that register: ${examples.join('  /  ')}
-Do not copy an example word for word if it does not fit the moment. Write what a real man would actually type.
+These are shapes, not lines to copy. Using one word for word is a failure unless it happens to be exactly what this moment calls for - write what a real man would actually type here.
 ${banLine}
 Only use "I hear you" when this turn's register is plain agreement, and even then look for a better fit first.
 If the register does not fit what actually happened (taking ownership when the user did nothing wrong, for example), use the closest register that stays honest.`;
@@ -867,10 +916,11 @@ If the register does not fit what actually happened (taking ownership when the u
       curious:   { label: "one real question about their experience, never about scheduling", examples: ["What part hit hardest?", "What did that feel like for you?", "Tell me what you needed from me.", "What's going on underneath it?"] },
       need:      { label: "ask what they need from you right now", examples: ["What do you need from me right now?", "What would actually help?", "Tell me what would make this right."] },
       act:       { label: "name one concrete thing you are doing about it, as a commitment with no question attached", examples: ["I'm handling it tonight.", "I'm putting the phone down.", "I'll have it to you by 2.", "That changes starting now."] },
-      presence:  { label: "show up in this moment instead of scheduling a later one", examples: ["Say it again, I'm actually listening this time.", "I'm not going anywhere.", "I'm all yours right now.", "I'm right here for this."] },
+      presence:  { label: "show up in this moment instead of scheduling a later one", examples: ["Say it again, I'm actually listening this time.", "I'm not going anywhere.", "I'm all yours right now.", "I've got time - go ahead."] },
       own:       { label: "end on the ownership itself, with no ask and no plan attached", examples: ["That's on me.", "I should have had your back.", "I got that one wrong."] },
       space:     { label: "respect the space they asked for and give a clear return time", examples: ["I'll give you space and check back tonight.", "Take the time you need. I'll be here.", "I'll come find you in a bit."] },
-      reconnect: { label: "invite a real conversation", examples: ["Can we talk tonight?", "Can we sit down later?", "Got time to get into this after dinner?", "Want to hash this out tonight?"] }
+      reconnect: { label: "invite a real conversation", examples: ["Can we talk tonight?", "Can we sit down later?", "Got time to get into this after dinner?", "Want to hash this out tonight?"] },
+      limit:     { label: "say where you stand or what you need, once, with no apology attached - and always leave a way back in", examples: ["Twenty minutes and I'm all yours.", "Not over text - but I do want to sort it tonight.", "I want to fix this, not win it.", "I need to cool off first. I'm not dropping it."] }
     };
 
     let recentCloserRegisters = [];
@@ -883,9 +933,16 @@ If the register does not fit what actually happened (taking ownership when the u
     const CLOSER_LOOKBACK = 10;
     let assignedCloserRegister = 'curious';
 
-    function pickCloserRegister(scenario) {
+    function pickCloserRegister(scenario, userText) {
+      const stance = readUserStance(userText === undefined ? lastUserMessage() : userText);
       let pool;
-      if (practicePerson === 'coworker') pool = ['act', 'need', 'curious', 'none', 'own'];
+      // A limit the user set has to survive into the answer, so the ending is
+      // the limit itself or the space around it - never "I'm right here for
+      // this now", which is what the app kept handing back.
+      if (stance.limit) pool = ['limit', 'space', 'none'];
+      else if (stance.disputes) pool = ['limit', 'curious', 'none', 'act'];
+      else if (stance.dismisses) pool = ['curious', 'limit', 'none', 'presence'];
+      else if (practicePerson === 'coworker') pool = ['act', 'need', 'curious', 'none', 'own'];
       else if (scenario && scenario.stance === 'withdraw') pool = ['space', 'none', 'own', 'presence'];
       else pool = ['curious', 'act', 'presence', 'none', 'need', 'own', 'reconnect'];
 
@@ -903,8 +960,8 @@ If the register does not fit what actually happened (taking ownership when the u
       return key;
     }
 
-    function buildCloserInstruction(scenario) {
-      const key = pickCloserRegister(scenario);
+    function buildCloserInstruction(scenario, userText) {
+      const key = pickCloserRegister(scenario, userText);
       const reg = closerRegisters[key] || closerRegisters.curious;
       const seed = hashSeed('close-ex|' + String((scenario && scenario.id) || 'custom') + '|' + aiTurnRequestId);
       const examples = rotateExamples(reg.examples, seed);
@@ -1090,11 +1147,14 @@ ${banLine}`.replace(/\n\n+/g, '\n');
     }
 
     function polishGroundedResponse(text) {
+      // These fire when the model returns nothing, so they cannot assume the
+      // user was in the wrong - the old wife line opened "You're right, that
+      // hurt", which apologized on his behalf for something nobody established.
       const fallbackByRole = {
-        coworker: "Got it. You're right to flag it, and that's on me. What do you need first so we're aligned?",
-        family: "Sounds like that has been sitting with you a while. I don't want us fighting. What felt hardest about it?",
-        wife: "You're right, that hurt. I don't want us fighting about it. Help me understand what part hit you hardest.",
-        girlfriend: "I can see why that landed hard. I don't want distance between us. What part hit you hardest?"
+        coworker: "Got it. I want this sorted properly, not smoothed over. What do you need from me first?",
+        family: "That has clearly been sitting with you. I would rather hear it straight than keep circling it. What is the part that stings?",
+        wife: "I can tell that landed hard. I am not going anywhere and I am not going to argue it. Tell me what hit worst.",
+        girlfriend: "That landed hard, I can hear it. Tell me the part that hit worst - I would rather know than guess."
       };
 
       let out = String(text || "").trim();
@@ -1112,6 +1172,31 @@ ${banLine}`.replace(/\n\n+/g, '\n');
       ];
       swaps.forEach(([re, rep]) => {
         out = out.replace(re, rep);
+      });
+
+      // The rule in the prompt cut worksheet phrasing but did not end it - one
+      // live reply in seven still opened "I hear that you're feeling...". These
+      // six say the same thing the way a man types it, and the capital letter
+      // follows the position in the sentence.
+      const worksheetSwaps = [
+        [/\bI hear that you(?:'re| are) feeling like\b/gi, "it landed like"],
+        [/\bI hear that you(?:'re| are) feeling\b/gi, "you're"],
+        [/\bI hear that you feel like\b/gi, "it landed like"],
+        [/\bI hear that you feel\b/gi, "you feel"],
+        [/\b(?:It s|S)ounds like you(?:'re| are) feeling\b/gi, "you feel"],
+        [/\bI hear you saying\b/gi, "you're telling me"]
+      ];
+      worksheetSwaps.forEach(([re, replacement]) => {
+        out = out.replace(re, function (match, offset, whole) {
+          // "I hear that you're feeling ignored AND THAT I missed something"
+          // only parses because of the "I hear that" it hangs off. Dropping the
+          // lead-in there produced "You're ignored and that I missed something".
+          const rest = whole.slice(offset + match.length).split(/[.!?]/)[0];
+          if (/\bthat\b/.test(rest)) return match;
+          const before = whole.slice(0, offset).replace(/\s+$/, "");
+          const atStart = before === "" || /[.!?]$/.test(before);
+          return atStart ? replacement.charAt(0).toUpperCase() + replacement.slice(1) : replacement;
+        });
       });
 
       if (!out) {
@@ -1371,7 +1456,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["did do", "nagging", "busy", ...universalRedFlags],
           greenFlags: ["wall", "ignored", "ignoring", "listen", "heard", ...universalGreenFlags],
           translation: "She feels unseen and alone. She needs to know she matters to you.",
-          perfectResponse: "Okay, that landed. You're right that I wasn't really listening. Say it again and I'm actually here this time.",
+          perfectResponse: "Okay, that landed. You're not talking to a wall - say it again and I'm actually here this time.",
           tips: "Don’t fight the facts. Start with the feeling and the impact.",
           followUp: { green: "Okay… I just feel like I’m carrying this alone sometimes.", yellow: "I don’t know. I’m just frustrated.", red: "See? You’re doing it again." }
         },
@@ -1432,7 +1517,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["she didn't", "sensitive", "my mom", "drama", ...universalRedFlags],
           greenFlags: ["side", "alone", "defend", "hurt", "team", "support", "mom", ...universalGreenFlags],
           translation: "She feels unprotected. She needs to know you have her back.",
-          perfectResponse: "That's on me. I sat there and let it happen, and you were on your own in it. I should have said something.",
+          perfectResponse: "That's on me - I sat there and let it happen. Next time she starts, I'll stop it in the room, not after.",
           tips: "Support your wife first. You can deal with mom later.",
           followUp: { green: "I just need to know we’re a team.", yellow: "It happens a lot.", red: "You always choose her over me." }
         },
@@ -1452,7 +1537,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["what tone", "i didn't say that", "sensitive", "you started", ...universalRedFlags],
           greenFlags: ["tone", "harsh", "scary", "hurt", "sounded", ...universalGreenFlags],
           translation: "She feels scared or talked down to. She needs emotional safety.",
-          perfectResponse: "You’re right. My tone was sharp. I’m sorry—let me slow down and try that again.",
+          perfectResponse: "Yeah, my tone was sharp and that's on me. The dad comparison stings, though. Let me try again without the edge.",
           tips: "Own impact. Don’t argue what you “meant.”",
           followUp: { green: "Thank you. That helps.", yellow: "Just watch it next time.", red: "You’re turning into him." }
         },
@@ -1462,7 +1547,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["you were wrong", "facts", "joke", "sensitive", ...universalRedFlags],
           greenFlags: ["stupid", "embarrassed", "small", "friends", "public", "humiliated", ...universalGreenFlags],
           translation: "She feels humiliated. She needs to feel safe with you in public.",
-          perfectResponse: "Yeah, I did that. I embarrassed you in front of people and I didn't have your back. I'm sorry.",
+          perfectResponse: "Yeah, I did that. I corrected you in front of everyone instead of having your back. That won't happen again.",
           tips: "Public shame sticks. Validate and take responsibility.",
           followUp: { green: "I just want to feel safe with you.", yellow: "It was embarrassing.", red: "I’m not going out with you again." }
         },
@@ -1484,7 +1569,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["barely touched", "you're never in the mood", "youre never in the mood", "rejected", ...universalRedFlags],
           greenFlags: ["pressure", "space", "sorry", "respect", "tired", ...universalGreenFlags],
           translation: "She feels pressured. She needs her boundary respected and to feel valued.",
-          perfectResponse: "Got it. I’m sorry I pushed. I’ll stop. I care about you—not just sex.",
+          perfectResponse: "Got it, I'll back off. I'm not going to sulk about it either. I'd still like to just sit with you.",
           tips: "Respect the ‘no’ quickly. No pouting, no guilt.",
           followUp: { green: "Thank you for understanding.", yellow: "Just go to sleep.", red: "You always make it about you." }
         }
@@ -1497,7 +1582,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["i was busy", "relax", "crazy", "overreacting", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "sorry", "i get it", "didn't mean", "forgot", ...universalGreenFlags],
           translation: "She feels insecure and wants reassurance that she matters to you.",
-          perfectResponse: "That's fair. I was right there on my phone and left you hanging. I'm sorry. You matter more than whatever I was scrolling.",
+          perfectResponse: "Fair - I was right there and left you hanging. That's on me. From now on I answer, or I tell you I can't.",
           tips: "Don’t debate the timeline. Reassure and reconnect.",
           followUp: { green: "Okay… thank you. I just hate feeling stupid for caring.", yellow: "Just… please respond next time.", red: "Wow. So I’m not important. Got it." }
         },
@@ -1527,7 +1612,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["pressure", "too much", "crazy", "relax", "you always", "you never", ...universalRedFlags],
           greenFlags: ["i hear you", "that hurts", "i care", "i want", "reconnect", ...universalGreenFlags],
           translation: "She feels uncertain and wants reassurance and direction.",
-          perfectResponse: "That has to feel awful to sit with. I do care about you, and you deserve a straight answer. Can we talk tonight?",
+          perfectResponse: "That's a rough thing to be sitting with. You deserve a straight answer instead of another maybe - tonight, phones down.",
           tips: "Don’t dodge. Give warmth + a clear next step.",
           followUp: { green: "Yes. That’s all I’ve been asking for.", yellow: "Okay. We need to talk.", red: "If you cared, I wouldn’t have to beg." }
         },
@@ -1547,7 +1632,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["what tone", "sensitive", "you started", ...universalRedFlags],
           greenFlags: ["sorry", "you're right", "i hear you", "try again", ...universalGreenFlags],
           translation: "She feels hurt and needs emotional safety.",
-          perfectResponse: "Yeah, that came out harsh. I'm sorry. Let me slow down and say it the way I actually meant it.",
+          perfectResponse: "Yeah, that came out harsher than I meant it. I wasn't trying to shut you down - let me say it again properly.",
           tips: "Own impact. Repair fast.",
           followUp: { green: "Thank you. That means a lot.", yellow: "Okay… just watch it.", red: "You always do this." }
         },
@@ -1568,7 +1653,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["not a big deal", "relax", "sensitive", ...universalRedFlags],
           greenFlags: ["invisible", "sorry", "i hear you", "that sucks", ...universalGreenFlags],
           translation: "She felt unchosen and embarrassed. She needs reassurance and repair.",
-          perfectResponse: "Oof. Standing there invisible while I talked to everyone would feel awful. I'm sorry. You're with me and I should have said so.",
+          perfectResponse: "Oof. You were standing right there and I left you out of it. That's on me - next one, I introduce you first.",
           tips: "Public moments hit deep. Repair it directly.",
           followUp: { green: "Thank you. I just needed you to have my back.", yellow: "It just hurt.", red: "It’s like you’re ashamed of me." }
         }
@@ -1581,7 +1666,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["you always", "you never", "dramatic", "i'm busy", "stop", ...universalRedFlags],
           greenFlags: ["i hear you", "makes sense", "sorry", "miss you", "care", ...universalGreenFlags],
           translation: "They feel disconnected and want closeness and consistency.",
-          perfectResponse: "It sounds like you've been feeling forgotten, and that's on me for going quiet. I do care. Can we lock in a time this week?",
+          perfectResponse: "You're right that I've gone quiet, and I do care. I can't do every week, but I can do Sundays - I'll call you then.",
           tips: "Family pain is usually about connection, not schedules.",
           followUp: { green: "Okay. I just miss you.", yellow: "Fine. Just actually follow through.", red: "You always say that." }
         },
@@ -1714,7 +1799,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["not my fault", "i was busy", "whatever", ...universalRedFlags],
           greenFlags: ["sorry", "my bad", "i hear you", "behind", "fix", ...universalGreenFlags],
           translation: "They feel stressed and want reliability.",
-          perfectResponse: "My fault. That put you behind and I'm sorry. What's the fastest way to get caught up and unblock the next step?",
+          perfectResponse: "My fault, I should have been in that room. What's the fastest way to unblock you from here?",
           tips: "Own it. Then solve.",
           followUp: { green: "Thanks. Here’s what we need.", yellow: "We’ll need to redo a piece.", red: "This keeps happening." }
         },
@@ -1799,7 +1884,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["i was busy", "you seemed fine", "you didn't ask", ...universalRedFlags],
           greenFlags: ["alone", "sorry", "i should have", "my bad", "i hear you", ...universalGreenFlags],
           translation: "She felt abandoned when she was vulnerable. She needs to know you'll show up when it counts.",
-          perfectResponse: "I'm sorry. That was a time to show up and I didn't. You shouldn't have felt alone. How are you feeling now?",
+          perfectResponse: "I'm sorry. You were sick and on your own all day and I wasn't there. How are you feeling now?",
           tips: "Show up in the present tense. Ask about now, not just apologize.",
           followUp: { green: "Better. I just needed to know you care.", yellow: "I'll be okay.", red: "I can't count on you." }
         },
@@ -1842,7 +1927,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["relax", "overreacting", "you're not my mom", "i'm fine", ...universalRedFlags],
           greenFlags: ["worried", "i should have", "sorry", "my bad", "let you know", ...universalGreenFlags],
           translation: "She was scared and felt disrespected. She needs reassurance and accountability.",
-          perfectResponse: "You're right. I should've texted. You were worried and I went dark—that's on me. I'm sorry.",
+          perfectResponse: "You're right, I went dark and left you worrying. That's on me. Next time I text you, even if it's late.",
           tips: "Own the communication failure, not just the time.",
           followUp: { green: "Thank you. Just keep me in the loop.", yellow: "Please don't do that again.", red: "I don't know if I can trust you." }
         },
@@ -1875,7 +1960,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["i forgot", "it's just a birthday", "busy", ...universalRedFlags],
           greenFlags: ["i'm sorry", "that hurt", "i should have", "you matter", "my bad", ...universalGreenFlags],
           translation: "They feel forgotten and unimportant. They need to feel like they matter.",
-          perfectResponse: "I'm sorry. That was wrong. You matter to me and I let you down—that's not okay.",
+          perfectResponse: "I'm sorry - no excuse, I just missed it. You matter to me and I'm not doing that again. Let me take you out this week.",
           tips: "No excuses. Just own it and make them feel seen.",
           followUp: { green: "Thank you. I just needed to hear that.", yellow: "It hurt.", red: "You forget every year." }
         },
@@ -1895,7 +1980,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["i was busy", "not a big deal", "you always", "drama", ...universalRedFlags],
           greenFlags: ["embarrassed", "i should have been there", "sorry", "let you down", ...universalGreenFlags],
           translation: "They feel publicly let down. They need accountability and loyalty.",
-          perfectResponse: "You're right. I should've been there. That was embarrassing and I let you down. I'm sorry.",
+          perfectResponse: "You're right, I should have been there. I'm not going to make excuses - tell me how I make it right.",
           tips: "Family events carry weight beyond the event itself. Own the miss.",
           followUp: { green: "Thank you. Just be there next time.", yellow: "It was bad.", red: "You always have an excuse." }
         },
@@ -1938,7 +2023,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["that's not what i said", "calm down", "you're wrong", "overreacting", ...universalRedFlags],
           greenFlags: ["i hear you", "that felt like a betrayal", "sorry", "my bad", "shouldn't have", ...universalGreenFlags],
           translation: "They feel betrayed and need to know they can trust you.",
-          perfectResponse: "That felt like a betrayal, and it should have. I should have handled it differently in that room. I'm sorry.",
+          perfectResponse: "That was a betrayal and it should have felt like one. I should have brought it to you first. I'll correct it with them today.",
           tips: "If any part of it is true, own it. Don't fight the whole thing.",
           followUp: { green: "Thank you. I just need to trust you.", yellow: "Just don't do it again.", red: "I won't forget this." }
         },
@@ -1958,7 +2043,7 @@ ${banLine}`.replace(/\n\n+/g, '\n');
           redFlags: ["not my problem", "you handled it", "calm down", "whatever", ...universalRedFlags],
           greenFlags: ["you're right", "should have said something", "i hear you", "sorry", "back you up", ...universalGreenFlags],
           translation: "They feel abandoned and exposed. They need someone to have their back.",
-          perfectResponse: "You're right. I should've said something and I didn't. That left you hanging—I'm sorry.",
+          perfectResponse: "You're right, I was standing right there and said nothing. That's on me, and I'll set it straight with them today.",
           tips: "Loyalty matters at work. Acknowledge where you fell short.",
           followUp: { green: "Thank you. I just needed you to acknowledge it.", yellow: "Please back me up next time.", red: "I can't count on you." }
         },
@@ -3009,16 +3094,28 @@ GRADING RULES:
 - Respectful space without validation or return plan is YELLOW.
 - Attacks, insults, contempt, stonewalling, abandonment, "leave me alone", "whatever", "I'm done", "stop bothering me", or pure fact-defense like "No I didn't" are RED.
 
-${buildOpenerInstruction(scenario)}
+THE GROUNDED RESPONSE STANDS ON ITS OWN FEET:
+- Grounded is not the same as sorry. It can hold a limit, disagree, or say what the USER needs, and still be warm.
+- Own only what the USER actually did in RECENT_TRANSCRIPT. Never apologize for something he has not done, and never agree to a version of events he has just disputed.
+- One ownership sentence at most, and never stacked ("I'm sorry. That was wrong. I let you down.").
+- No self-erasure. No "you matter more than", no "I don't deserve", no promising to become whatever the ${otherPerson} wants.
+- A limit always comes with a way back - when he returns, or that he is not dropping it. A limit with no door is stonewalling, and this app grades that RED.
+- Firm is not cold. No jabs, no sarcasm, no name-calling, no "I'm not your ATM". He can hold his ground and still be someone you want to talk to.
+- No worksheet phrasing: never "I hear that you feel...", "I hear you saying...", "Sounds like you're feeling...", "That must feel...". Say the same thing the way a man texts it.
+- The ${otherPerson} does not have to be satisfied by it. A grounded text can leave the disagreement open.
 
-${buildCloserInstruction(scenario)}
+${buildStanceInstruction(userText)}
+
+${buildOpenerInstruction(scenario, userText)}
+
+${buildCloserInstruction(scenario, userText)}
 
 Return valid JSON ONLY:
 {
   "grade": "green"|"yellow"|"red",
   "title": "Title (short)",
   "message": "Feedback (1-3 short sentences)",
-  "perfectResponse": "The Grounded Response: 1-2 short text-message sentences (18-34 words) the USER sends to the ${otherPerson}, replying to the ${otherPerson}'s most recent message. Reflect the ${otherPerson}'s feeling/need first, then follow the assigned ENDING for this turn; include a respectful timeout and return plan only when flooding is the secure move. Grounded and human, never a rewrite of the USER's own words.",
+  "perfectResponse": "The Grounded Response: 1-2 short text-message sentences, 14-30 words, never three the USER sends to the ${otherPerson}, replying to the ${otherPerson}'s most recent message. Open in the assigned OPENING register and finish in the assigned ENDING. Show you understood the ${otherPerson}, and keep whatever the USER is actually standing on - his limit, his side of the facts, what he needs - instead of trading it away to end the fight. Grounded and human, never a rewrite of the USER's own words, never an apology for something he did not do.",
   "translation": "Hidden emotion/need behind the latest other-person message (1 sentence)"
 }`;
     }

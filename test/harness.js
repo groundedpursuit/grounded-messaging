@@ -142,6 +142,7 @@ const EXPORTS = `
     escapeHtml, initScenarios, cycleScenarios, scenarioPageFor, scenarioPageCount,
     buildReplyPrompt, buildCombinedTurnPrompt, parseGeminiJson,
     replyProblem, lineSimilarity, accusationStems, claimWords, denialFragments,
+    readUserStance, buildStanceInstruction,
     resolveReply, scriptedReplyJson, samePoint, repeatNote, roleSwapNote,
     setGroundedResponse, toggleGroundedResponse,
     recordAiRep, refundAiRep, aiRepsRemaining, loadAiUsage

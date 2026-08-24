@@ -442,6 +442,121 @@ async function policyTests() {
   check('a failed retry keeps the first draft rather than nothing', out.reply, swap);
 }
 
+// ------------------------------------------------- grounded response spine --
+section('grounded response: warmth with a spine, not appeasement');
+{
+  const { app } = loadApp();
+  const scen = app.pools.wife.find(s => s.id === 'attack');
+  const setup = userText => {
+    app.setState({
+      practicePerson: 'wife', wifePersona: 'pursuer', activeScenario: scen, lastGrade: 'yellow',
+      currentTranslation: scen.translation,
+      chatHistory: [{ role: 'model', text: scen.initialText }, { role: 'user', text: userText }]
+    });
+    return app.fns.buildCombinedTurnPrompt(scen, userText);
+  };
+
+  const disputes = "i did do it though. you're not remembering it right.";
+  const limit = "i'm too heated to do this right now. give me twenty minutes and i'll come back.";
+  const dismiss = "whatever. you always find something to be mad about.";
+  const plain = "that sounds really hard and i want to understand it.";
+
+  check('a denial reads as disputing the facts', app.fns.readUserStance(disputes).disputes, true);
+  check('asking for twenty minutes reads as a limit', app.fns.readUserStance(limit).limit, true);
+  check('"whatever" reads as brushing them off', app.fns.readUserStance(dismiss).dismisses, true);
+  check('a plain reply is none of those', app.fns.readUserStance(plain), { disputes: false, limit: false, dismisses: false });
+
+  const disputePrompt = setup(disputes);
+  check('the answer is told not to concede a disputed fact',
+    /does NOT agree that he did it and does NOT apologize for it/.test(disputePrompt), true);
+  const limitPrompt = setup(limit);
+  check("and to keep the user's limit in the answer",
+    /That limit STAYS in the answer/.test(limitPrompt), true);
+  const dismissPrompt = setup(dismiss);
+  check('contempt gets the honest version, not grovelling',
+    /Do not have him grovel/.test(dismissPrompt), true);
+  check('a plain reply gets no stance note', /WHAT THE USER JUST DID/.test(setup(plain)), false);
+
+  // The standing rules, which apply on every turn.
+  check('grounded is separated from sorry', /Grounded is not the same as sorry/.test(disputePrompt), true);
+  check('ownership is capped at one sentence', /One ownership sentence at most/.test(disputePrompt), true);
+  check('self-erasure is named and banned', /No self-erasure/.test(disputePrompt), true);
+  check('a limit has to leave a way back', /A limit always comes with a way back/.test(disputePrompt), true);
+  check('firm is separated from cold', /Firm is not cold/.test(disputePrompt), true);
+
+  // A man who just disputed the facts should not be handed "take ownership
+  // immediately" as his opening move. Scenario id seeds the register pick, so
+  // several scenarios sample several seeds.
+  const ids = ['attack', 'overwhelm', 'money', 'parenting', 'roommate', 'inlaws', 'work', 'public'];
+  let ownedAnyway = 0, apologyEnding = 0;
+  ids.forEach(id => {
+    const s2 = app.pools.wife.find(x => x.id === id);
+    app.setState({
+      practicePerson: 'wife', wifePersona: 'pursuer', activeScenario: s2, lastGrade: 'yellow',
+      currentTranslation: s2.translation,
+      chatHistory: [{ role: 'model', text: s2.initialText }, { role: 'user', text: disputes }]
+    });
+    const prompt = app.fns.buildCombinedTurnPrompt(s2, disputes);
+    if (/take ownership immediately/.test(prompt)) ownedAnyway++;
+    if (/end on the ownership itself/.test(prompt)) apologyEnding++;
+  });
+  check('a disputed turn never opens by taking the blame', ownedAnyway, 0);
+  check('and never ends on it either', apologyEnding, 0);
+}
+
+section('grounded response: the scripted answers');
+{
+  const { app } = loadApp();
+  const answers = [];
+  [app.pools, app.dailyPools].forEach(pools => Object.keys(pools).forEach(p =>
+    pools[p].forEach(s => answers.push({ id: p + '/' + s.id, text: s.perfectResponse }))));
+
+  const APOLOGY_MARKERS = /\b(i'm sorry|i am sorry|sorry|my fault|my bad|that's on me|i was wrong|that was wrong|i let you down|i should have|i should've)\b/gi;
+  const stacked = answers.filter(a => (String(a.text).match(APOLOGY_MARKERS) || []).length > 2);
+  check('no scripted answer stacks three apologies', stacked.map(a => a.id), []);
+
+  const erasing = answers.filter(a => /you matter more than|i don't deserve|whatever you want me to be/i.test(a.text));
+  check('none trades the user away to end the fight', erasing.map(a => a.id), []);
+
+  const worksheet = answers.filter(a => /i hear that you feel|i hear you saying|sounds like you're feeling/i.test(a.text));
+  check('none is written in worksheet voice', worksheet.map(a => a.id), []);
+
+  const missing = answers.filter(a => !a.text || a.text.split(/\s+/).length < 8);
+  check('every scenario still has a real answer', missing.map(a => a.id), []);
+
+  // Phil's read on the app was "simpy". The measurement behind the rewrite: an
+  // answer that apologizes or agrees and then leaves the user holding nothing -
+  // no commitment, no limit, no want, not even a question. Ten of the scripted
+  // answers did that before this pass.
+  const folds = answers.filter(a => {
+    const t = String(a.text);
+    const gives = /\b(you're right|that's fair|fair point|fair enough|my fault|my bad|that's on me|i'm sorry|sorry|i should have|i should've|no excuse)\b/i.test(t);
+    const holds = /\b(i'll|i will|i'm going to|i'm not|from now on|next time|next one|that won't happen|let me|let's|tell me|i want|i do want|i'd still|my intent|what do you need|what's the fastest|how do you want|how are you|i can have|i can't|going forward)\b|\?\s*$/i.test(t);
+    return gives && !holds;
+  });
+  check('no scripted answer folds with nothing behind it', folds.map(a => a.id), []);
+}
+
+section('grounded response: worksheet phrasing is rewritten on the way out');
+{
+  const { app } = loadApp();
+  app.setState({ practicePerson: 'wife' });
+  const polish = t => app.fns.polishGroundedResponse(t);
+  check('a feelings lead-in becomes plain speech',
+    polish("I hear that you're feeling unheard and frustrated right now. I am not going anywhere."),
+    "You're unheard and frustrated right now. I am not going anywhere.");
+  check('mid-sentence too',
+    polish("I was trying to connect, but I hear you saying I was pushy. Let me back off."),
+    "I was trying to connect, but you're telling me I was pushy. Let me back off.");
+  check('sounds-like gets the same treatment',
+    polish("It sounds like you're feeling left behind. What is going on underneath it?"),
+    "You feel left behind. What is going on underneath it?");
+  // "I hear that you're feeling X and that Y" only parses because of the lead-in.
+  check('a sentence that needs the lead-in keeps it',
+    polish("I hear that you're feeling ignored and that I missed something important. I am here now."),
+    "I hear that you're feeling ignored and that I missed something important. I am here now.");
+}
+
 // ------------------------------------------------------------------ report --
 function report() {
   console.log('');
