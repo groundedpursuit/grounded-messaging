@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Grounded Messaging</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
@@ -252,9 +252,13 @@
 
       <div class="flex-1 overflow-y-auto mobile-scroll">
         <div class="px-4 py-2">
-          <div class="ios-search p-2 flex items-center gap-2">
-            <i class="fas fa-search text-sm ml-1"></i><span class="text-sm">Search</span>
-          </div>
+          <label class="ios-search p-2 flex items-center gap-2">
+            <i class="fas fa-search text-sm ml-1"></i>
+            <input id="scenario-search" type="search" inputmode="search" autocomplete="off"
+                   placeholder="Search scenarios" aria-label="Search scenarios"
+                   oninput="initScenarios()"
+                   class="flex-1 bg-transparent border-0 outline-none text-gray-900 placeholder-gray-400" />
+          </label>
         </div>
 
         <!-- NEW SIMULATION -->
@@ -656,6 +660,15 @@
     function recordAiRep() {
       const usage = loadAiUsage();
       safeStorage.setItem(AI_CAP_KEY, JSON.stringify({ day: usage.day, count: usage.count + 1 }));
+      updateModeIndicator();
+      updateQuickModeNote();
+    }
+    // A rep is claimed before the request goes out so two taps cannot spend the
+    // same one. If the request never lands, hand it back - a dropped connection
+    // should not cost the user one of twenty daily turns.
+    function refundAiRep() {
+      const usage = loadAiUsage();
+      safeStorage.setItem(AI_CAP_KEY, JSON.stringify({ day: usage.day, count: Math.max(0, usage.count - 1) }));
       updateModeIndicator();
       updateQuickModeNote();
     }
@@ -1180,6 +1193,8 @@ ${banLine}`.replace(/\n\n+/g, '\n');
         /\bi am shut down\b/,
         /\bi'?m at capacity\b/,
         /\bi am at capacity\b/,
+        /\bi'?m (too|really|so|getting|pretty|way too) (flooded|overwhelmed|activated|upset|heated|worked up|fried|angry)\b/,
+        /\bi am (too|really|so|getting|pretty|way too) (flooded|overwhelmed|activated|upset|heated|worked up|fried|angry)\b/,
         /\bi can'?t (talk|think|respond|do this) (clearly|well|right now)\b/,
         /\bi cannot (talk|think|respond|do this) (clearly|well|right now)\b/
       ];
@@ -1200,7 +1215,15 @@ ${banLine}`.replace(/\n\n+/g, '\n');
         "i can't talk well right now",
         "not ready to talk",
         "take a break",
-        "take a pause"
+        "take a pause",
+        "give me a minute",
+        "give me a moment",
+        "give me a few minutes",
+        "give me some time",
+        "give me a little time",
+        "i need a moment",
+        "need a moment",
+        /\bgive me \d+\s*(minutes?|mins?|hours?)\b/
       ];
 
       const returnPatterns = [
@@ -1216,6 +1239,12 @@ ${banLine}`.replace(/\n\n+/g, '\n');
         "come back later",
         "come back when",
         "come back today",
+        "come back to it",
+        "come back to you",
+        "get back to this",
+        "get back to you",
+        "text you later",
+        "call you later",
         "revisit this",
         "pick this up",
         "circle back",
@@ -1294,6 +1323,17 @@ ${banLine}`.replace(/\n\n+/g, '\n');
     // listen" and "I didn't mean it" - five of six good replies came back red.
     const universalRedFlags = ["calm down", "relax", "you always", "you never", "you're wrong", "youre wrong", "that's wrong", "thats wrong", "drama", "you're lying", "youre lying", "childish", "grow up", "chill out", "damn", "worst", "yes you do", "yes i did", "no i didn't", "no i don't", "not true"];
     const universalGreenFlags = ["hear you", "hear that", "hearing that", "hearing you", "feel like", "feels like", "must be", "must feel", "frustrating", "frustrated", "hard", "tough", "rough", "makes sense", "total sense", "totally sense", "make sense", "sorry", "apologize", "my bad", "understand", "understood", "get it", "got it", "getting it", "sounds like", "sound like", "sounds", "valid", "fair", "totally fair", "fair point", "hear ya", "stress", "stressful", "overwhelmed", "love you", "love ya", "i love you", "care about you", "care for you", "team", "together", "partner", "on the same page", "that sucks", "miss you", "miss us", "want that too", "want the same", "i can imagine", "can imagine", "whoa", "ouch", "oof", "that's rough", "thats rough", "that landed", "you're right", "youre right", "on me", "my fault", "no wonder"];
+
+    // Non-apologies and dismissals. "sorry" is a green flag, so "I'm sorry you
+    // feel that way" used to score GREEN on that one word. These are matched as
+    // whole phrases and outweigh the green word sitting inside them.
+    const invalidatingPhrases = [
+      "sorry you feel", "sorry that you feel", "sorry you took it", "sorry if you", "sorry but",
+      "you took it wrong", "took it the wrong way", "not what i said", "not what i meant",
+      "overreacting", "over reacting", "dramatic", "so sensitive", "too sensitive",
+      "being sensitive", "here we go again", "whatever you say", "if you say so",
+      "get over it", "let it go", "you always do this", "you never let"
+    ];
 
     // ==========================
     // SCENARIO POOLS BY PERSON
@@ -2148,26 +2188,82 @@ ${banLine}`.replace(/\n\n+/g, '\n');
       const listContainer = document.getElementById('scenario-list');
       listContainer.innerHTML = '';
 
+      // The list used to show 3 of the 12 scenarios, reshuffled on every
+      // return to this screen, all titled with the same person's name. There
+      // was no way to find the one you were part way through. Full pool, fixed
+      // order, real titles, searchable.
       const pool = scenarioPools[practicePerson] || scenarioPools.wife;
-      const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, 3);
+      const searchEl = document.getElementById('scenario-search');
+      const query = String((searchEl && searchEl.value) || '').trim().toLowerCase();
+      const matches = query
+        ? pool.filter(s => (
+            String(s.name || '') + ' ' + String(s.initialText || '') + ' ' + String(s.tips || '')
+          ).toLowerCase().indexOf(query) !== -1)
+        : pool;
 
-      shuffled.forEach((scen, index) => {
+      const colors = ['bg-gray-400', 'bg-blue-400', 'bg-green-400', 'bg-purple-400', 'bg-orange-400'];
+      const avatarLetter = getPersonAvatar();
+      const displayName = getPersonLabel();
+
+      // Daily Challenge sits at the top so a full pool cannot bury it.
+      if (!query) {
+        const daily = getDailyScenario(practicePerson);
+        const dailyDone = isScenarioCompleted(practicePerson, 'daily_' + daily.id);
+        const dailyEl = document.createElement('div');
+        dailyEl.className = "flex items-center px-4 py-3 active:bg-amber-100 cursor-pointer border-b border-amber-100 ml-4 bg-amber-50";
+        dailyEl.setAttribute('role', 'button');
+        dailyEl.setAttribute('tabindex', '0');
+        dailyEl.onclick = () => startScenario(Object.assign({}, daily, { id: 'daily_' + daily.id }));
+        dailyEl.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); dailyEl.onclick(); } };
+        dailyEl.innerHTML =
+          `<div class="w-12 h-12 rounded-full bg-amber-400 flex items-center justify-center text-white text-xl flex-shrink-0">&#11088;</div>
+           <div class="ml-3 flex-1 min-w-0">
+             <div class="flex justify-between items-baseline mb-0.5">
+               <h3 class="font-semibold text-base truncate text-amber-700">Daily Challenge</h3>
+               <div class="flex items-center gap-2">
+                 <span class="text-amber-500 text-sm font-medium">Today</span>
+                 ${dailyDone ? `<i class="fas fa-check-circle text-green-500 text-sm" title="Completed"></i>` : ``}
+               </div>
+             </div>
+             <p class="text-gray-500 text-sm truncate leading-snug">${escapeHtml(previewText(daily))}</p>
+           </div>`;
+        listContainer.appendChild(dailyEl);
+      }
+
+      const doneCount = pool.filter(s => isScenarioCompleted(practicePerson, s.id)).length;
+      const header = document.createElement('div');
+      header.className = "px-4 pt-4 pb-1 flex items-baseline justify-between";
+      header.innerHTML =
+        `<span class="text-xs font-bold uppercase tracking-widest text-gray-400">${escapeHtml(displayName)}</span>
+         <span class="text-xs text-gray-400">${doneCount} of ${pool.length} done</span>`;
+      listContainer.appendChild(header);
+
+      if (!matches.length) {
+        const empty = document.createElement('div');
+        empty.className = "px-4 py-8 text-center text-gray-400 text-sm";
+        empty.innerText = 'No scenarios match that search.';
+        listContainer.appendChild(empty);
+        return;
+      }
+
+      matches.forEach((scen, index) => {
         const el = document.createElement('div');
         el.className = "flex items-center px-4 py-3 active:bg-gray-100 cursor-pointer border-b border-gray-100 ml-4 border-l-0";
+        el.setAttribute('role', 'button');
+        el.setAttribute('tabindex', '0');
         el.onclick = () => startScenario(scen);
+        el.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); el.onclick(); } };
 
-        const colors = ['bg-gray-400', 'bg-blue-400', 'bg-green-400', 'bg-purple-400', 'bg-orange-400'];
-        const avatarLetter = getPersonAvatar();
-        const displayName = getPersonLabel();
         const done = isScenarioCompleted(practicePerson, scen.id);
+        const title = scen.name || displayName;
 
         el.innerHTML =
           `<div class="w-12 h-12 rounded-full ${colors[index%5]} flex items-center justify-center text-white font-bold text-lg flex-shrink-0">${avatarLetter}</div>
            <div class="ml-3 flex-1 min-w-0">
              <div class="flex justify-between items-baseline mb-0.5">
-               <h3 class="font-semibold text-base truncate">${displayName}</h3>
-               <div class="flex items-center gap-2">
-                 <span class="text-gray-400 text-sm">${scen.timestamp}</span>
+               <h3 class="font-semibold text-base truncate ${done ? 'text-gray-400' : ''}">${escapeHtml(title)}</h3>
+               <div class="flex items-center gap-2 flex-shrink-0">
+                 <span class="text-gray-400 text-sm">${escapeHtml(scen.timestamp || '')}</span>
                  ${done ? `<i class="fas fa-check-circle text-green-500 text-sm" title="Completed"></i>` : ``}
                </div>
              </div>
@@ -2175,26 +2271,6 @@ ${banLine}`.replace(/\n\n+/g, '\n');
            </div>`;
         listContainer.appendChild(el);
       });
-
-      // Daily Challenge row
-      const daily = getDailyScenario(practicePerson);
-      const dailyDone = isScenarioCompleted(practicePerson, 'daily_' + daily.id);
-      const dailyEl = document.createElement('div');
-      dailyEl.className = "flex items-center px-4 py-3 active:bg-amber-100 cursor-pointer border-b border-amber-100 ml-4 bg-amber-50";
-      dailyEl.onclick = () => startScenario(Object.assign({}, daily, { id: 'daily_' + daily.id }));
-      dailyEl.innerHTML =
-        `<div class="w-12 h-12 rounded-full bg-amber-400 flex items-center justify-center text-white text-xl flex-shrink-0">⭐</div>
-         <div class="ml-3 flex-1 min-w-0">
-           <div class="flex justify-between items-baseline mb-0.5">
-             <h3 class="font-semibold text-base truncate text-amber-700">Daily Challenge</h3>
-             <div class="flex items-center gap-2">
-               <span class="text-amber-500 text-sm font-medium">Today</span>
-               ${dailyDone ? `<i class="fas fa-check-circle text-green-500 text-sm"></i>` : ``}
-             </div>
-           </div>
-           <p class="text-gray-500 text-sm truncate leading-snug">${escapeHtml(previewText(daily))}</p>
-         </div>`;
-      listContainer.appendChild(dailyEl);
     }
 
     function setPersona(p) {
@@ -2373,6 +2449,7 @@ Return JSON ONLY:
       lastReplyText = "";
       lastGrade = null;
       aiTurnRequestId += 1;
+      hideTypingIndicator();
 
       // reset win/strike progress for this scenario
       resetProgressState();
@@ -2435,6 +2512,7 @@ Return JSON ONLY:
           decoded = await analyzeCustomIntake(input);
         } catch (e) {
           console.warn("Custom intake analysis failed", e);
+          refundAiRep();
           decoded = fallbackCustomDecodeFromText(input);
         }
 
@@ -2539,12 +2617,13 @@ Return JSON ONLY:
       }
 
       const redHits = activeScenario.redFlags.filter(f => matchesFlag(lower, f));
+      const invalidatingHits = invalidatingPhrases.filter(f => matchesFlag(lower, f));
       const greenHits = activeScenario.greenFlags.filter(f => matchesFlag(lower, f));
 
       // Green work is allowed to outweigh one defensive phrase. The old rule
       // failed the whole reply on a single red hit, so "You're right, I never
       // really listen" scored red for the word "never".
-      let score = (greenHits.length * 5) - (redHits.length * 8);
+      let score = (greenHits.length * 5) - (redHits.length * 8) - (invalidatingHits.length * 10);
       if (userText.split(' ').filter(Boolean).length < 3) score -= 4;
 
       let feedback = {};
@@ -2552,6 +2631,7 @@ Return JSON ONLY:
         lastGrade = 'red';
         let msg = `That landed defensive (“${redHits[0]}”).`;
         if ((redHits[0] || "").includes("yes you")) msg = "Arguing facts usually makes it worse. Start with the feeling.";
+        if (invalidatingHits.length) msg = 'That reads as a non-apology ("' + invalidatingHits[0] + '"). Own the impact instead of the wording.';
         feedback = { grade: 'red', title: 'Too Hot 🛑', badgeColor: 'bg-red-100 text-red-800', message: msg };
       } else if (score >= 4) {
         lastGrade = 'green';
@@ -2577,25 +2657,91 @@ Return JSON ONLY:
       return flagPatternCache[key].test(lowerText);
     }
 
-    // GEMINI (via GAS server-side proxy — JSONP avoids CORS/redirect restrictions)
+    // GEMINI (via GAS server-side proxy)
     const GAS_PROXY_URL = 'https://script.google.com/macros/s/AKfycbx1XGb3k8fu2xjnvYDIC0ovHELOrUeo2P8M4gV7v6zXdrgu9AFvZa0pvKXKFaf3liazvg/exec';
 
-    function callGemini(prompt, options = {}) {
+    const GEMINI_TIMEOUT_MS = 20000;
+
+    // An error the proxy itself reported (quota, upstream failure). Marked so
+    // the transport fallback below does not retry and spend a second call.
+    function proxyError(message) {
+      const err = new Error(message);
+      err.fromProxy = true;
+      return err;
+    }
+
+    // JSONP carried the entire prompt in the query string. The longest live
+    // prompts measured ~11.3KB encoded against a ~16.5KB limit, and past that
+    // the request fails silently and the user gets a canned reply. It also had
+    // no timeout, so a stalled request left the typing dots up forever.
+    function callGeminiJsonp(prompt, options) {
       return new Promise(function(resolve, reject) {
         const cbName = 'gc_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
         const script = document.createElement('script');
-        const cleanup = () => { delete window[cbName]; script.remove(); };
+        let timer = null;
+        const cleanup = function() {
+          if (timer) clearTimeout(timer);
+          delete window[cbName];
+          script.remove();
+        };
         window[cbName] = function(data) {
           cleanup();
-          if (data.error) reject(new Error(data.error));
-          else resolve(data.text);
+          if (data && data.error) reject(proxyError(data.error));
+          else resolve(data ? data.text : '');
         };
         script.onerror = function() { cleanup(); reject(new Error('Network error')); };
+        timer = setTimeout(function() { cleanup(); reject(new Error('Timed out')); }, GEMINI_TIMEOUT_MS);
         const tier = options.tier ? '&tier=' + encodeURIComponent(options.tier) : '';
         const temp = (typeof options.temp === 'number') ? '&temp=' + encodeURIComponent(String(options.temp)) : '';
         script.src = GAS_PROXY_URL + '?action=gemini&callback=' + cbName + tier + temp + '&prompt=' + encodeURIComponent(prompt);
         document.head.appendChild(script);
       });
+    }
+
+    // POST puts the prompt in the body instead: no length cliff, no private
+    // message sitting in a URL, and an abortable timeout.
+    async function callGeminiPost(prompt, options) {
+      const body = new URLSearchParams();
+      body.set('action', 'gemini');
+      body.set('prompt', prompt);
+      if (options.tier) body.set('tier', options.tier);
+      if (typeof options.temp === 'number') body.set('temp', String(options.temp));
+
+      const controller = (typeof AbortController === 'function') ? new AbortController() : null;
+      const timer = setTimeout(function() { if (controller) controller.abort(); }, GEMINI_TIMEOUT_MS);
+      try {
+        const res = await fetch(GAS_PROXY_URL, {
+          method: 'POST',
+          body: body,
+          redirect: 'follow',
+          signal: controller ? controller.signal : undefined
+        });
+        if (!res.ok) throw new Error('Proxy HTTP ' + res.status);
+        const data = await res.json();
+        if (data && data.error) throw proxyError(data.error);
+        return data ? data.text : '';
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    // Two consecutive transport failures (an old proxy build with no doPost, a
+    // WebView that blocks the request) drop this session back to JSONP.
+    let geminiPostFailures = 0;
+
+    async function callGemini(prompt, options = {}) {
+      if (geminiPostFailures < 2) {
+        try {
+          const text = await callGeminiPost(prompt, options);
+          geminiPostFailures = 0;
+          return text;
+        } catch (e) {
+          if (e && e.fromProxy) throw e;
+          geminiPostFailures += 1;
+          console.warn("Gemini POST failed, falling back to JSONP", e);
+        }
+      }
+      return callGeminiJsonp(prompt, options);
     }
 
     function getChatTimeHeader(scenario) {
@@ -2801,12 +2947,16 @@ Return valid JSON ONLY:
         );
       } catch (e) {
         console.warn("API Fail", e);
+        refundAiRep();
         if (requestId !== aiTurnRequestId) return;
         analyzeResponseLocal(userText);
       }
     }
 
-    async function generateReplyWithGemini() {
+    // Takes the turn id the same way analyzeWithGemini does. Without it a reply
+    // generated for one scenario landed in whichever scenario was open when it
+    // came back, and went into chatHistory as if the other person had said it.
+    async function generateReplyWithGemini(requestId) {
       const otherPerson = getPersonNoun();
       const selfLabel = otherPerson.toUpperCase() + " (you)";
 
@@ -2856,6 +3006,8 @@ ${behaviorGuide}`;
 
       try {
         const response = await callGemini(systemPrompt, { tier: "fast" });
+        if (requestId !== aiTurnRequestId) return;
+
         const json = parseGeminiJson(response);
         const replyText = json.reply || "…";
         currentTranslation = json.translation || currentTranslation;
@@ -2863,21 +3015,24 @@ ${behaviorGuide}`;
         let delay = wifePersona === 'pursuer' ? 800 : 2500;
 
         setTimeout(() => {
-          document.getElementById('typing-indicator').classList.add('hidden');
+          if (requestId !== aiTurnRequestId) return;
+          hideTypingIndicator();
           appendMessage('received', replyText);
           chatHistory.push({ role: 'model', text: replyText });
           scrollToBottom();
           conversationStage++;
         }, delay);
       } catch (e) {
-        fallbackReply();
+        if (requestId !== aiTurnRequestId) return;
+        fallbackReply(requestId);
       }
     }
 
-    function fallbackReply() {
+    function fallbackReply(requestId) {
       let delay = wifePersona === 'pursuer' ? 800 : 2500;
       setTimeout(() => {
-        document.getElementById('typing-indicator').classList.add('hidden');
+        if (requestId !== undefined && requestId !== aiTurnRequestId) return;
+        hideTypingIndicator();
         let replyData = activeScenario.followUp ? activeScenario.followUp[lastGrade] : null;
         let replyText = replyData || "…";
 
@@ -3026,6 +3181,7 @@ Return JSON ONLY:
         applyInitialDecoderResult(json, wifeText);
 
       } catch (e) {
+        refundAiRep();
         applyInitialDecoderResult(fallbackCustomDecodeFromText(wifeText), wifeText);
       } finally {
         right.innerText = "Start Practice";
@@ -3089,10 +3245,23 @@ Return JSON ONLY:
       c.scrollTop = c.scrollHeight;
     }
 
+    function showTypingIndicator() {
+      const el = document.getElementById('typing-indicator');
+      if (el) el.classList.remove('hidden');
+    }
+
+    function hideTypingIndicator() {
+      const el = document.getElementById('typing-indicator');
+      if (el) el.classList.add('hidden');
+    }
+
     // BACK
     function goBack(reset = false, force = false) {
       if (overlayLocked && !force) return;
+      // Invalidate any in-flight AI turn AND clear the dots it was going to
+      // land under, or they keep animating on the next scenario you open.
       aiTurnRequestId += 1;
+      hideTypingIndicator();
       document.getElementById('chat-view').classList.add('translate-x-full');
       document.getElementById('feedback-overlay').classList.add('hidden');
       if (reset) resetProgressState();
@@ -3223,11 +3392,12 @@ Return JSON ONLY:
       }
 
       closeFeedback();
-      document.getElementById('typing-indicator').classList.remove('hidden');
+      showTypingIndicator();
       scrollToBottom();
 
-      if (aiAvailable()) generateReplyWithGemini();
-      else fallbackReply();
+      const requestId = nextAITurnRequestId();
+      if (aiAvailable()) generateReplyWithGemini(requestId);
+      else fallbackReply(requestId);
     }
 
     // WIN FLOW
@@ -3242,11 +3412,11 @@ Return JSON ONLY:
       const closing = getWinClosingMessage();
       const delay = (wifePersona === 'pursuer') ? 700 : 1400;
 
-      document.getElementById('typing-indicator').classList.remove('hidden');
+      showTypingIndicator();
       scrollToBottom();
 
       setTimeout(() => {
-        document.getElementById('typing-indicator').classList.add('hidden');
+        hideTypingIndicator();
         appendMessage('received', closing);
         chatHistory.push({ role: 'model', text: closing });
 
@@ -3365,7 +3535,7 @@ Return JSON ONLY:
       const typingId = 'sd-typing-' + Date.now();
       thread.insertAdjacentHTML('beforeend', `
         <div class="flex justify-end">
-          <div class="bg-blue-500 text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%] text-sm leading-snug">${text.replace(/</g, '&lt;')}</div>
+          <div class="bg-blue-500 text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%] text-sm leading-snug">${escapeHtml(text)}</div>
         </div>
         <div id="${typingId}" class="flex justify-start">
           <div class="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-3">
@@ -3385,6 +3555,7 @@ Return JSON ONLY:
           result = localSelfDecode(text);
         }
       } catch (e) {
+        refundAiRep();
         result = localSelfDecode(text);
       }
       selfDecodeBusy = false;
@@ -3398,11 +3569,11 @@ Return JSON ONLY:
         <div class="flex flex-col gap-2">
           <div class="bg-emerald-50 border-l-4 border-emerald-400 p-3 rounded-r-lg text-sm">
             <span class="text-xs font-bold text-emerald-800 uppercase tracking-widest block mb-1"><i class="fas fa-heart mr-1"></i> Emotion</span>
-            <p class="text-emerald-900 italic font-medium leading-normal">"${emotion.replace(/"/g, '&quot;')}"</p>
+            <p class="text-emerald-900 italic font-medium leading-normal">"${escapeHtml(emotion)}"</p>
           </div>
           <div class="bg-green-50 border border-green-100 p-3 rounded-lg text-sm text-green-900 italic relative">
             <i class="fas fa-quote-left absolute top-2 left-2 text-green-200 text-xl -z-10"></i>
-            <span>${rewrite.replace(/</g, '&lt;')}</span>
+            <span>${escapeHtml(rewrite)}</span>
           </div>
         </div>
       `);
@@ -3465,7 +3636,15 @@ Return JSON ONLY:
     // ============================
     // GROUNDED RESPONSE TOGGLE
     // ============================
-    let showGroundedResponse = localStorage.getItem('showGroundedResponse') !== 'false';
+    // Was a bare localStorage read. In a WebView with storage blocked (Android
+    // "block third-party cookies", private modes) the getItem threw here, at
+    // the top level of the script, and the whole app booted to a blank screen.
+    // The two setters also wrote two different encodings for one flag, so the
+    // setting never survived a reload. One wrapper, one encoding, old values
+    // still understood.
+    const GROUNDED_TOGGLE_KEY = 'showGroundedResponse';
+    const groundedTogglePref = safeStorage.getItem(GROUNDED_TOGGLE_KEY);
+    let showGroundedResponse = groundedTogglePref !== '0' && groundedTogglePref !== 'false';
 
     function applyGroundedVisibility() {
       const section = document.getElementById('grounded-response-section');
@@ -3473,15 +3652,12 @@ Return JSON ONLY:
     }
 
     function toggleGroundedResponse() {
-      showGroundedResponse = !showGroundedResponse;
-      localStorage.setItem('showGroundedResponse', showGroundedResponse);
-      updateGroundedToggleUI();
-      applyGroundedVisibility();
+      setGroundedResponse(!showGroundedResponse);
     }
 
     function setGroundedResponse(val) {
-      showGroundedResponse = val;
-      localStorage.setItem('showGroundedResponse', val ? '1' : '0');
+      showGroundedResponse = !!val;
+      safeStorage.setItem(GROUNDED_TOGGLE_KEY, showGroundedResponse ? '1' : '0');
       updateGroundedToggleUI();
       applyGroundedVisibility();
     }
