@@ -286,11 +286,171 @@ section('roleplay prompt: the other person keeps their own side of the fight');
     /do NOT ask for space/.test(withdrawn), false);
 }
 
-// ------------------------------------------------------------------ report --
-console.log('');
-if (failures.length) {
-  console.log(failures.length + ' FAILED, ' + passed + ' passed\n');
-  failures.forEach(f => console.log('  FAIL  ' + f));
-  process.exit(1);
+// ------------------------------------------------------- reply integrity ---
+section('reply integrity: the checks that run before a reply is shown');
+{
+  const { app } = loadApp();
+  const boundary = app.pools.family.find(s => s.id === 'fam_boundary');
+  const intimacy = app.pools.wife.find(s => s.id === 'intimacy');
+  const space = app.pools.girlfriend.find(s => s.id === 'gf_space');
+
+  const state = (scen, history, persona) => app.setState({
+    practicePerson: scen === boundary ? 'family' : (scen === space ? 'girlfriend' : 'wife'),
+    wifePersona: persona || 'withdrawer', activeScenario: scen, lastGrade: 'red',
+    currentTranslation: scen.translation, chatHistory: history
+  });
+  const kind = reply => { const p = app.fns.replyProblem(reply); return p ? p.kind : 'clean'; };
+
+  // The reported bug: the family member accused the user of shutting them out,
+  // the user denied it, and the reply denied it right back - the user's line.
+  state(boundary, [{ role: 'model', text: boundary.initialText }, { role: 'user', text: "no i'm not" }]);
+  check('denying their own accusation is a role swap',
+    kind("I'm not shutting you out. I just need some space to think."), 'role');
+  check('holding the complaint is fine',
+    kind("Then why does it feel like there is a wall up every time I ask?"), 'clean');
+  check('handing the subject back is a role swap',
+    kind("Can we just talk about this later? I need a minute."), 'role');
+  check('parroting the user is a role swap', kind("no i'm not"), 'role');
+  check('sending the opening text again is a repeat', kind(boundary.initialText), 'repeat');
+  // Pressing the same point on the very next text is the design. Only the
+  // wording of the opening text is off limits.
+  check('pressing the opening complaint in new words is not',
+    kind("You have been off for weeks and you keep telling me it is nothing."), 'clean');
+
+  // The other half of the same rule: when the USER accuses them of something,
+  // denying THAT is answering the user, not stealing their side.
+  state(space, [
+    { role: 'model', text: space.initialText },
+    { role: 'user', text: 'why are you always pushing me away' }
+  ]);
+  check('denying what the user accused them of is allowed',
+    kind("I'm not pushing you away. I asked for ten minutes."), 'clean');
+  check('and a withdrawing scenario may still ask for space',
+    kind("Some space until tomorrow, then we can get into it."), 'clean');
+
+  // "You are not listening WHEN I say I am not in the mood" accuses the user of
+  // not listening and says nothing about moods, so restating the mood is not a
+  // denial of their own complaint.
+  state(intimacy, [{ role: 'model', text: intimacy.initialText }, { role: 'user', text: "you're overreacting" }]);
+  check('restating their own position is not a swap',
+    kind("You are not hearing me when I say I'm not in the mood."), 'clean');
+
+  // Repetition, which only counts inside one conversation.
+  const said = "It feels like I am the only one who tries to keep this family together.";
+  state(boundary, [
+    { role: 'model', text: boundary.initialText },
+    { role: 'user', text: 'i said nothing is wrong' },
+    { role: 'model', text: said },
+    { role: 'user', text: 'you do the same thing' }
+  ]);
+  check('sending the same line twice is a repeat', kind(said), 'repeat');
+  check('the same point in new words is a repeat',
+    kind("Keeping this family together always falls to me, nobody else even tries."), 'repeat');
+  check('opening with the same three words is a repeat',
+    kind("It feels like nobody in this house tells me anything anymore."), 'repeat');
+  check('a genuinely new line passes',
+    kind("Mom asked about you on Sunday and I had nothing to tell her."), 'clean');
+
+  check('an empty reply never reaches the screen', kind(''), 'role');
 }
-console.log(passed + ' passed');
+
+// ---------------------------------------------------------- reply prompt ----
+section('reply prompt: position, already-said and rejection blocks');
+{
+  const { app } = loadApp();
+  const scen = app.pools.wife.find(s => s.id === 'attack');
+  const earlier = "You said you would call the plumber three weeks ago.";
+  app.setState({
+    practicePerson: 'wife', wifePersona: 'pursuer', activeScenario: scen, lastGrade: 'red',
+    currentTranslation: scen.translation,
+    chatHistory: [
+      { role: 'model', text: scen.initialText },
+      { role: 'user', text: 'i do listen' },
+      { role: 'model', text: earlier },
+      { role: 'user', text: 'that is not fair' }
+    ]
+  });
+
+  const prompt = app.fns.buildReplyPrompt();
+  check('the prompt names whose complaint this is', /YOUR POSITION: you are the wife/.test(prompt), true);
+  check('and quotes the text they opened with', prompt.includes(scen.initialText.slice(0, 40)), true);
+  check('the prompt lists what they already sent', prompt.includes(earlier), true);
+  check('and tells them to keep their side while moving',
+    /moving does not mean dropping the complaint/.test(prompt), true);
+  check('a first draft carries no rejection block', /FIRST DRAFT WAS REJECTED/.test(prompt), false);
+
+  const retry = app.fns.buildReplyPrompt({ kind: 'repeat', note: 'Say something new.', reply: earlier });
+  check('a retry quotes the rejected draft', retry.includes(earlier), true);
+  check('and gives the reason', retry.includes('Say something new.'), true);
+}
+
+// --------------------------------------------------------- retry policy -----
+async function policyTests() {
+  section('retry policy: one regeneration, then the scripted line');
+  const { app } = loadApp();
+  const scen = app.pools.family.find(s => s.id === 'fam_boundary');
+  const swap = "I'm not shutting you out. I just need some space to think.";
+  const good = "You have been distant for weeks and I am tired of guessing why.";
+  const setup = history => app.setState({
+    practicePerson: 'family', wifePersona: 'withdrawer', activeScenario: scen, lastGrade: 'red',
+    currentTranslation: scen.translation,
+    chatHistory: history || [
+      { role: 'model', text: scen.initialText },
+      { role: 'user', text: "no i'm not" }
+    ]
+  });
+
+  setup();
+  let calls = [];
+  let out = await app.fns.resolveReply(p => { calls.push(p); return Promise.resolve({ reply: good }); });
+  check('a clean draft is used as written', out.reply, good);
+  check('and costs one call', calls.length, 1);
+
+  setup();
+  calls = [];
+  out = await app.fns.resolveReply(p => {
+    calls.push(p);
+    return Promise.resolve({ reply: calls.length === 1 ? swap : good });
+  });
+  check('a role swap is regenerated', calls.length, 2);
+  check('and the clean second draft is used', out.reply, good);
+  check('the retry is told what was wrong', calls[1].kind, 'role');
+  check('and carries the rejected draft', calls[1].reply, swap);
+
+  setup();
+  calls = [];
+  out = await app.fns.resolveReply(p => { calls.push(p); return Promise.resolve({ reply: swap }); });
+  check('two bad drafts stop at two calls', calls.length, 2);
+  check('and fall back to the scenario line', out.reply, scen.followUp.red);
+
+  // When the scripted line is itself already spent, the second draft is all
+  // that is left - falling back would just repeat the conversation.
+  setup([
+    { role: 'model', text: scen.initialText },
+    { role: 'model', text: scen.followUp.red },
+    { role: 'user', text: "no i'm not" }
+  ]);
+  out = await app.fns.resolveReply(() => Promise.resolve({ reply: swap }));
+  check('a spent scenario line is not reused', out.reply, swap);
+
+  setup();
+  calls = [];
+  out = await app.fns.resolveReply(p => {
+    calls.push(p);
+    return calls.length === 1 ? Promise.resolve({ reply: swap }) : Promise.reject(new Error('network'));
+  });
+  check('a failed retry keeps the first draft rather than nothing', out.reply, swap);
+}
+
+// ------------------------------------------------------------------ report --
+function report() {
+  console.log('');
+  if (failures.length) {
+    console.log(failures.length + ' FAILED, ' + passed + ' passed\n');
+    failures.forEach(f => console.log('  FAIL  ' + f));
+    process.exit(1);
+  }
+  console.log(passed + ' passed');
+}
+
+policyTests().then(report, err => { console.log('  FAIL  policy tests threw: ' + err.message); process.exit(1); });

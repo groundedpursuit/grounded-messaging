@@ -141,6 +141,8 @@ const EXPORTS = `
     analyzeResponseLocal, assessSecureBoundary, matchesFlag, polishGroundedResponse,
     escapeHtml, initScenarios, cycleScenarios, scenarioPageFor, scenarioPageCount,
     buildReplyPrompt, buildCombinedTurnPrompt, parseGeminiJson,
+    replyProblem, lineSimilarity, accusationStems, claimWords, denialFragments,
+    resolveReply, scriptedReplyJson, samePoint, repeatNote, roleSwapNote,
     setGroundedResponse, toggleGroundedResponse,
     recordAiRep, refundAiRep, aiRepsRemaining, loadAiUsage
   }

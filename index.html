@@ -3058,10 +3058,304 @@ Return valid JSON ONLY:
       }
     }
 
-    // Takes the turn id the same way analyzeWithGemini does. Without it a reply
-    // generated for one scenario landed in whichever scenario was open when it
-    // came back, and went into chatHistory as if the other person had said it.
-    function buildReplyPrompt() {
+    // ---- reply integrity ---------------------------------------------------
+    // The prompt tells the other person a dozen ways to stay on their own side
+    // of the fight, and mostly they do - but a rule the model quietly ignores
+    // looks exactly like a rule that worked. Every generated reply is checked
+    // before it can reach the screen. A failed check costs one regeneration; an
+    // unchecked one cost the user a conversation where the wife answered her
+    // own accusation and both people were suddenly the same person.
+
+    const CLAIM_STOPWORDS = new Set([
+      "the", "and", "for", "with", "about", "that", "this", "these", "those", "just", "really",
+      "even", "very", "you", "your", "yours", "youre", "youve", "youll", "was", "were", "been",
+      "being", "are", "not", "never", "always", "but", "because", "would", "could", "should",
+      "cant", "cannot", "will", "wont", "have", "has", "had", "did", "does", "done", "doing",
+      "get", "got", "gonna", "going", "like", "what", "why", "how", "when", "then", "than",
+      "there", "here", "all", "any", "some", "one", "its", "thats", "dont", "didnt", "doesnt",
+      "isnt", "wasnt", "arent", "werent", "havent", "hasnt", "hadnt", "ive", "ill", "yeah",
+      "okay", "right", "now", "again", "anymore", "much", "more", "most", "every", "time",
+      "who", "whom", "whose", "ever", "still", "yet",
+      "said", "say", "says", "tell", "told", "think", "thought", "know", "knew", "feel",
+      "feels", "felt", "want", "wanted", "need", "needed", "make", "made"
+    ]);
+
+    // "shutting" and "shut", "ignoring" and "ignored" have to compare equal or
+    // the check misses the exact swap it exists to catch.
+    function stemToken(word) {
+      let stem = word;
+      if (stem.length > 5 && stem.slice(-3) === "ing") stem = stem.slice(0, -3);
+      else if (stem.length > 4 && stem.slice(-2) === "ed") stem = stem.slice(0, -2);
+      else if (stem.length > 4 && stem.slice(-2) === "es") stem = stem.slice(0, -2);
+      else if (stem.length > 3 && stem.slice(-1) === "s" && stem.slice(-2) !== "ss") stem = stem.slice(0, -1);
+      if (stem.length > 3 && /(.)\1$/.test(stem)) stem = stem.slice(0, -1);
+      return stem;
+    }
+
+    function claimWords(text) {
+      return String(text || "")
+        .toLowerCase()
+        .replace(/[‘’]/g, "'")
+        .replace(/[^a-z' ]+/g, " ")
+        .split(/\s+/)
+        .map(function (word) { return word.replace(/'/g, ""); })
+        .filter(function (word) { return word.length > 2 && !CLAIM_STOPWORDS.has(word); })
+        .map(stemToken)
+        // Stopwords are filtered again after stemming: "what's" survives the
+        // first pass as "whats" and only becomes "what" on the way out.
+        .filter(function (stem) { return stem.length > 2 && !CLAIM_STOPWORDS.has(stem); });
+    }
+
+    function otherPersonLines() {
+      return chatHistory
+        .filter(function (m) { return m && m.role === "model" && m.text; })
+        .map(function (m) { return String(m.text); });
+    }
+
+    function userLines() {
+      return chatHistory
+        .filter(function (m) { return m && m.role === "user" && m.text && !/^Context:/i.test(String(m.text)); })
+        .map(function (m) { return String(m.text); });
+    }
+
+    // Everything after the clause runs into a new thought: "you are not
+    // listening WHEN I say I am not in the mood" accuses the user of not
+    // listening, and says nothing about moods.
+    const CLAUSE_ENDER = /\b(when|whenever|because|since|while|though|although|unless|until|before|after|if|so|that|which|who|and|but|or)\b/;
+
+    function accusedPart(clause) {
+      const hit = clause.match(/\byou(?:'?re|r|'?ve|'?ll)?\b/i);
+      if (!hit) return "";
+      let tail = clause.slice(hit.index + hit[0].length);
+      const ender = tail.match(CLAUSE_ENDER);
+      if (ender) tail = tail.slice(0, ender.index);
+      return tail;
+    }
+
+    // Only the part of a clause that lands ON the user counts. Taking every word
+    // the other person said would flag legitimate escalation - "I am not making
+    // dinner again" after an opener about cold dinner is their side of the
+    // fight, not the user's - and taking the whole you-clause pulled in words
+    // from the half about themselves.
+    function stemsFromLines(lines) {
+      const stems = new Set();
+      lines.forEach(function (line) {
+        String(line).split(/[.!?;,\n]+/).forEach(function (clause) {
+          claimWords(accusedPart(clause)).forEach(function (stem) { stems.add(stem); });
+        });
+      });
+      return stems;
+    }
+
+    function accusationStems() {
+      const lines = otherPersonLines();
+      if (activeScenario && activeScenario.initialText) lines.push(String(activeScenario.initialText));
+      const mine = stemsFromLines(lines);
+      // When the USER has accused them of the same thing back - "you are the one
+      // pushing me away" - denying it is answering the user, not stealing their
+      // side. Only what the user never raised can be a swap.
+      stemsFromLines(userLines()).forEach(function (stem) { mine.delete(stem); });
+      return mine;
+    }
+
+    // Non-global on purpose: a global regex carries lastIndex between calls and
+    // would skip every other sentence.
+    const SELF_DENIALS = [
+      /\bi'?m not\b([^.!?,;]*)/i,
+      /\bi am not\b([^.!?,;]*)/i,
+      /\bi was not\b([^.!?,;]*)/i,
+      /\bi wasn'?t\b([^.!?,;]*)/i,
+      /\bi don'?t\b([^.!?,;]*)/i,
+      /\bi do not\b([^.!?,;]*)/i,
+      /\bi didn'?t\b([^.!?,;]*)/i,
+      /\bi did not\b([^.!?,;]*)/i,
+      /\bi never\b([^.!?,;]*)/i,
+      /\bi haven'?t\b([^.!?,;]*)/i,
+      /\bi have not\b([^.!?,;]*)/i,
+      /\bi'?ve never\b([^.!?,;]*)/i
+    ];
+
+    function denialFragments(reply) {
+      const fragments = [];
+      String(reply || "").split(/[.!?\n]+/).forEach(function (sentence) {
+        SELF_DENIALS.forEach(function (pattern) {
+          const hit = sentence.match(pattern);
+          if (!hit) return;
+          let fragment = hit[1] || "";
+          const ender = fragment.match(CLAUSE_ENDER);
+          if (ender) fragment = fragment.slice(0, ender.index);
+          fragments.push(fragment);
+        });
+      });
+      return fragments;
+    }
+
+    // A pressing scenario opens with the other person wanting something. Asking
+    // for space there is the user's move, not theirs - it is how "Boundary Push"
+    // turned into the family member reciting the user's own boundary line.
+    const SPACE_REQUEST = /\b(need (some )?(space|time|air|room)|need a (minute|moment|break|second)|give me (some )?(space|time|a minute)|leave me alone|talk( about (it|this))? later|can we (talk|do this) later|come back to (it|this)|i'?m done talking|not doing this right now|drop it)\b/i;
+
+    function roleSwapNote(reply) {
+      const other = getPersonNoun();
+      const accused = accusationStems();
+      if (accused.size) {
+        const fragments = denialFragments(reply);
+        for (let i = 0; i < fragments.length; i++) {
+          const overlap = claimWords(fragments[i]).filter(function (stem) { return accused.has(stem); });
+          if (overlap.length) {
+            return "It denies the very thing the " + other + " accused the user of. That denial is the USER's line, not the " + other + "'s - the " + other + " raised this complaint and has to keep holding it.";
+          }
+        }
+      }
+
+      const withdrawing = !!(activeScenario && activeScenario.stance === "withdraw");
+      if (!withdrawing && SPACE_REQUEST.test(reply)) {
+        return "It asks for space or hands the subject back to the user. In this scenario the " + other + " is the one who wants something, so backing away is the user's move, not theirs.";
+      }
+
+      const mirrored = userLines().filter(function (line) { return lineSimilarity(line, reply) >= 0.72; });
+      if (mirrored.length) {
+        return "It repeats the USER's own message back at them almost word for word. React to what the user said instead of echoing it.";
+      }
+
+      return "";
+    }
+
+    // Wording similarity misses the version of this that annoys people most:
+    // the same point made again in a new sentence. Measured across 72 live
+    // replies, every pair sharing 60% of its content words was a restatement
+    // and every pair below 55% had moved on, so the two checks run together.
+    function samePoint(a, b) {
+      const left = new Set(claimWords(a));
+      const right = new Set(claimWords(b));
+      if (left.size < 3 || right.size < 3) return false;
+      let shared = 0;
+      left.forEach(function (stem) { if (right.has(stem)) shared++; });
+      return (2 * shared) / (left.size + right.size) >= 0.6;
+    }
+
+    // Two texts in one chat starting the same three words read as a machine
+    // rather than a person. Bucketing every restating opener ("So you're
+    // saying...", "You say...", "I hear you saying...") into one move was tried
+    // and dropped: on 72 live replies it fired 10 times, mostly on good texts
+    // that opened by acknowledging an apology before pushing back.
+    function openingMove(text) {
+      const words = normalizeLine(text).split(" ").filter(Boolean);
+      return words.length >= 3 ? words.slice(0, 3).join(" ") : "";
+    }
+
+    function repeatNote(reply) {
+      const spoken = otherPersonLines();
+      const move = openingMove(reply);
+      if (move) {
+        for (let i = 0; i < spoken.length; i++) {
+          if (openingMove(spoken[i]) === move) {
+            return "The " + getPersonNoun() + " already opened a text in this chat with \"" + move + "\". Start this one somewhere else - a feeling, a specific detail, or a direct question.";
+          }
+        }
+      }
+      const opener = activeScenario && activeScenario.initialText ? normalizeLine(activeScenario.initialText) : "";
+      for (let i = 0; i < spoken.length; i++) {
+        // Pressing the same complaint on the very next text is the design, so
+        // the opening text is held to wording only. Every line after it is the
+        // model talking, and that is where restating gets tiresome.
+        const isOpener = !!opener && normalizeLine(spoken[i]) === opener;
+        const clashes = lineSimilarity(spoken[i], reply) >= 0.6 || (!isOpener && samePoint(spoken[i], reply));
+        if (clashes) {
+          return "The " + getPersonNoun() + " already sent this in this conversation: \"" + truncateForPrompt(spoken[i], 120) + "\". Keep the same complaint - do not drop it or switch sides - but say something new: a fresh detail, a sharper question, a small concession, or one step colder.";
+        }
+      }
+      return "";
+    }
+
+    function normalizeLine(text) {
+      return String(text || "")
+        .toLowerCase()
+        .replace(/[‘’]/g, "'")
+        .replace(/[^a-z0-9' ]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    // Word bigrams, so a reordered sentence does not score as identical while
+    // "I just need some quiet right now" and "I need some quiet right now" do.
+    function bigramSet(line) {
+      const words = line.split(" ").filter(Boolean);
+      const grams = new Set();
+      for (let i = 0; i < words.length - 1; i++) grams.add(words[i] + " " + words[i + 1]);
+      return grams;
+    }
+
+    function lineSimilarity(a, b) {
+      const first = normalizeLine(a);
+      const second = normalizeLine(b);
+      if (!first || !second) return 0;
+      if (first === second) return 1;
+      const left = bigramSet(first);
+      const right = bigramSet(second);
+      // Two-word lines have too few bigrams to score honestly, and "Okay." twice
+      // is still a repeat. Fall back to containment for those.
+      if (left.size < 2 || right.size < 2) {
+        return (first.indexOf(second) !== -1 || second.indexOf(first) !== -1) ? 1 : 0;
+      }
+      let shared = 0;
+      left.forEach(function (gram) { if (right.has(gram)) shared++; });
+      return (2 * shared) / (left.size + right.size);
+    }
+
+    // Returns null when the reply is usable, or { kind, note } naming the
+    // problem in the words the retry prompt needs.
+    function replyProblem(reply) {
+      const text = String(reply || "").trim();
+      if (!text) return { kind: "role", note: "The reply was empty." };
+      const swap = roleSwapNote(text);
+      if (swap) return { kind: "role", note: swap };
+      const repeat = repeatNote(text);
+      if (repeat) return { kind: "repeat", note: repeat };
+      return null;
+    }
+
+    // The other person's own lines, handed back with an instruction, because the
+    // transcript alone was not enough: across 72 live replies 13 were a line the
+    // person had already sent in that same chat, some of them word for word.
+    function buildAlreadySaidBlock() {
+      const spoken = otherPersonLines();
+      if (!spoken.length) return "";
+      const bullets = spoken.slice(-6).map(function (line) {
+        return "- " + truncateForPrompt(line, 160);
+      }).join("\n");
+      return `
+ALREADY SENT BY YOU IN THIS CHAT - never send one of these again, and never make the same point again in different words:
+${bullets}
+Your next text has to move: a new detail or example, a sharper question, a small concession, or one step colder. You still keep your side of the fight - moving does not mean dropping the complaint or handing it back. If you have nothing new to add, react to what the USER just said rather than restating your case.`;
+    }
+
+    function buildPositionBlock(otherPerson) {
+      const opener = activeScenario && activeScenario.initialText
+        ? truncateForPrompt(activeScenario.initialText, 200) : "";
+      if (!opener) return "";
+      const withdrawing = !!(activeScenario && activeScenario.stance === 'withdraw');
+      const ownership = withdrawing
+        ? `That is YOUR position: you are the one pulling back, and you stay the one pulling back. The USER is the one trying to get through to you.`
+        : `That complaint is YOURS and it stays yours for the whole conversation. The USER is the one who has to answer for it. You never answer it as if it were aimed at you, and you never deny it about yourself.`;
+      return `YOUR POSITION: you are the ${otherPerson}. You opened this conversation by texting: "${opener}"
+${ownership}`;
+    }
+
+    // Named rejection beats another general rule. The model gets its own failed
+    // draft and the reason, which is a far stronger signal than one more line in
+    // a list it already read once.
+    function buildCorrectionBlock(problem) {
+      if (!problem || !problem.note) return "";
+      const draft = problem.reply ? `You wrote: "${truncateForPrompt(problem.reply, 200)}"\n` : "";
+      return `
+YOUR FIRST DRAFT WAS REJECTED.
+${draft}Why it fails: ${problem.note}
+Write a different next text that does not repeat that mistake.`;
+    }
+
+    // `problem` is set only on a regeneration - see resolveReply below.
+    function buildReplyPrompt(problem) {
       const otherPerson = getPersonNoun();
       const selfLabel = otherPerson.toUpperCase() + " (you)";
 
@@ -3076,6 +3370,8 @@ Return valid JSON ONLY:
 - Do not make the other person's reply sound like the user's grounded rewrite or like a therapist.
 - React to the USER's most recent message. Use the earlier lines for context, but do not summarize the conversation back.
 - Never begin your reply by repeating or paraphrasing the user's last message verbatim. Respond as a real person would — with your own emotional reaction, not by mirroring their words.
+- Open with your own reaction. The first few words must be a feeling, a concrete detail from this conversation, or a direct question - never a restatement of what the USER just said. Reflecting their message back before answering it is the single most machine-like habit in this app.
+- When the USER denies it, apologizes, or turns it back on you, do not summarize their message first. Answer it: name what it cost you, give one specific example, ask what they will actually do differently, or go colder.
 - Ownership test: when the conflict is about USER's behavior, do not say "I didn't answer", "I was late", "I forgot", or similar ownership phrases unless the ${otherPerson} actually did that in the transcript.
 - Specificity test: the reply must mention or clearly refer to one concrete detail from RECENT_TRANSCRIPT or Scenario. Do not send a generic space/talk-later response unless the transcript specifically shows flooding or a request for space.
 - If the person needs space, include the real reason from this conversation, not a standalone line.
@@ -3095,13 +3391,14 @@ EMOTIONAL AUTHENTICITY — GROUNDED PURSUIT FRAMEWORK:
 - Write like a real person texting, not a screenwriter. Sentence fragments, trailing off, re-opening a closed topic — all fair.
 ${buildPersonaGPGrounding()}
 
-${buildPersonaReplyRules(otherPerson)}
+${buildPersonaReplyRules(otherPerson)}${buildAlreadySaidBlock()}${buildCorrectionBlock(problem)}
 Return valid JSON only:
 { "reply": "the ${otherPerson}'s next text. It must still be THEIR complaint aimed at the user - never a denial or explanation of the thing they themselves brought up", "translation": "hidden emotion/need" }`;
 
       const systemPrompt =
 `You are roleplaying as the ${otherPerson} in a text conversation. Write only their next text message.
 ${buildPersonaProfile()}
+${buildPositionBlock(otherPerson)}
 LAST_GRADE: ${lastGrade}
 CURRENT_HIDDEN_MEANING: ${currentTranslation}
 ${buildScenarioContextSummary(activeScenario, { roleplay: true })}
@@ -3117,8 +3414,49 @@ ${behaviorGuide}`;
     // still reading their feedback instead, which is dead time either way.
     let pendingReply = null;
 
+    // The scenario's hand-written line for this grade - the same one the offline
+    // path uses, so it is always in character, which is exactly what a reply
+    // that failed the check twice is not.
+    function scriptedReplyJson() {
+      const followUp = activeScenario && activeScenario.followUp ? activeScenario.followUp[lastGrade] : null;
+      if (!followUp) return null;
+      return { reply: followUp, translation: currentTranslation };
+    }
+
+    // One retry, not a loop. A second failure means the model is stuck on the
+    // wrong side of this conversation, and asking a third time spends another
+    // call to hear it again.
+    async function resolveReply(generate) {
+      const first = await generate(null);
+      const firstProblem = replyProblem(first && first.reply);
+      if (!firstProblem) return first;
+
+      let second = null;
+      try {
+        second = await generate(Object.assign({}, firstProblem, { reply: (first && first.reply) || "" }));
+      } catch (e) {
+        return first;                       // a failed retry is worse than a flawed reply
+      }
+      const secondProblem = replyProblem(second && second.reply);
+      if (!secondProblem) return second;
+
+      // Two failures in a row means the model is not going to fix it on its own.
+      // The scripted line beats a second bad draft whenever it is clean itself -
+      // which it will not be if it is the line already sent this turn.
+      const scripted = scriptedReplyJson();
+      if (scripted && !replyProblem(scripted.reply)) return scripted;
+      return second;
+    }
+
+    function requestReplyOnce(problem) {
+      // The retry runs warmer: the first draft was rejected for saying the wrong
+      // thing, and repeating it at the same temperature is the likely outcome.
+      const options = problem ? { tier: "fast", temp: 0.6 } : { tier: "fast" };
+      return callGemini(buildReplyPrompt(problem), options).then(parseGeminiJson);
+    }
+
     function requestReply() {
-      return callGemini(buildReplyPrompt(), { tier: "fast" }).then(parseGeminiJson);
+      return resolveReply(requestReplyOnce);
     }
 
     function prefetchReply(requestId) {
@@ -3138,6 +3476,9 @@ ${behaviorGuide}`;
       return hit || requestReply();
     }
 
+    // Takes the turn id the same way analyzeWithGemini does. Without it a reply
+    // generated for one scenario landed in whichever scenario was open when it
+    // came back, and went into chatHistory as if the other person had said it.
     async function generateReplyWithGemini(requestId) {
       try {
         const json = await claimReply(requestId);
